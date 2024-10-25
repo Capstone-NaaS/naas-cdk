@@ -14,15 +14,32 @@ This CDK project will automatically deploy AWS resources to the cloud.
 
 ## Commands
 
-`cdk synth` to convert the CDK code to CloudFormation template.
+| Command               | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `cdk synth`           | Convert the CDK code to CloudFormation template.     |
+| `cdk deploy "Dev/*"`  | Deploy all defined resources in the **Dev** stage.   |
+| `cdk destroy "Dev/*"` | Destroy all deployed resources in the **Dev** stage. |
 
-`cdk deploy "Dev/*"` to deploy all defined resources in the `Dev` stage.
+## Constructs
 
-`cdk destroy "Dev/*"` to destroy all deployed resources in the `Dev` stage.
+| Construct         | Description                             |
+| ----------------- | --------------------------------------- |
+| `ConnectionIDddb` | DynamoDB table to store connection IDs. |
 
-## Current Resources
+## Stacks
 
-| Resource | Name                     | Description             |
-| -------- | ------------------------ | ----------------------- |
-| DynamoDB | `notification-users`     | Stores user attributes. |
-| S3       | `notification-logs-test` | Stores logs.            |
+| Stack         | Description                                           |
+| ------------- | ----------------------------------------------------- |
+| `WebSocketGW` | WebSocket API Gateway for communicating with clients. |
+| `HttpGW`      | HTTP API Gateway for accepting REST endpoints.        |
+
+## Resources
+
+| Resource    | Name                     | Description                                     |
+| ----------- | ------------------------ | ----------------------------------------------- |
+| DynamoDB    | `ConnectionIdTable-test` | Stores user attributes.                         |
+| API Gateway | `ApiGwSocket-test`       | WebSocket API gateway.                          |
+| API Gateway | `HttpApi-test`           | HTTP API gateway.                               |
+| Lambda      | `websocketConnect`       | Lambda to handle websocket `$connect` route.    |
+| Lambda      | `websocketDisconnect`    | Lambda to handle websocket `$disconnect` route. |
+| Lambda      | `websocketBroadcast`     | Lambda to handle websocket `broadcast` route.   |

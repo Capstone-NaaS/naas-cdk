@@ -6,7 +6,6 @@ import {
   aws_lambda_nodejs,
   CfnOutput,
   Duration,
-  Fn,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -15,6 +14,9 @@ import * as path from "path";
 import { ConnectionIDddb } from "../constructs/ConnectionIDddb";
 
 export class WebSocketGWStack extends Stack {
+  // http api gateway needs to share this lambda
+  public readonly websocketBroadcast: aws_lambda_nodejs.NodejsFunction;
+
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -95,6 +97,7 @@ export class WebSocketGWStack extends Stack {
         ],
       }
     );
+    this.websocketBroadcast = websocketBroadcast;
 
     // create role for gateway to invoke lambdas
     const role = new aws_iam.Role(this, "LambdaInvokeRole", {
