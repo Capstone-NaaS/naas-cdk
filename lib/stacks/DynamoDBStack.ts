@@ -12,7 +12,7 @@ export class DynamoDBStack extends Stack {
       this,
       "NotificationUsersTable",
       {
-        tableName: "notification-users",
+        tableName: "notification-users-test",
         partitionKey: {
           name: "id",
           type: dynamodb.AttributeType.NUMBER,

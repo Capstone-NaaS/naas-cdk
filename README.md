@@ -16,9 +16,9 @@ This CDK project will automatically deploy AWS resources to the cloud.
 
 `cdk synth` to convert the CDK code to CloudFormation template.
 
-`cdk deploy` to deploy all defined resources.
+`cdk deploy "Dev/*"` to deploy all defined resources in the `Dev` stage.
 
-`cdk destroy` to destroy all deployed resources.
+`cdk destroy "Dev/*"` to destroy all deployed resources in the `Dev` stage.
 
 ## Current Resources
 
