@@ -11,3 +11,10 @@ new NaasStage(app, "Dev", {
     region: process.env.CDK_DEFAULT_REGION,
   },
 });
+
+new NaasStage(app, "TestK", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
+});

@@ -1,10 +1,12 @@
-import * as AWS from "aws-sdk";
+import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import {
+  AttributeValue,
+  DynamoDB,
+  PutItemCommandInput,
+} from "@aws-sdk/client-dynamodb";
 import { Handler } from "aws-lambda";
-import { AttributeValue, PutItemInput } from "aws-sdk/clients/dynamodb";
 
-const DynamoDB = AWS.DynamoDB;
-
-const dynamoDb = new DynamoDB.DocumentClient();
+const dynamoDb = DynamoDBDocument.from(new DynamoDB());
 const TABLE_NAME: string = process.env.TABLE_NAME!;
 
 export const handler: Handler = async (event) => {
@@ -17,7 +19,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const params: PutItemInput = {
+  const params: PutItemCommandInput = {
     TableName: TABLE_NAME,
     Item: {
       connectionId: connectionId,
@@ -25,7 +27,7 @@ export const handler: Handler = async (event) => {
   };
 
   try {
-    await dynamoDb.put(params).promise();
+    await dynamoDb.put(params);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Connected", connectionId, event }),

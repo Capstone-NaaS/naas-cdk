@@ -11,12 +11,12 @@ export class NaasStage extends Stage {
     // Add websocket api gateway to stage
     const websocketGwStack = new WebSocketGWStack(
       this,
-      "WebSocketGWStack-test",
+      "WebSocketGWStack-test-k",
       { env: props?.env }
     );
 
     // Add http api gateway to stage
-    new HttpGWStack(this, "HttpGWStack-test", websocketGwStack, {
+    new HttpGWStack(this, "HttpGWStack-test-k", websocketGwStack, {
       env: props?.env,
     });
   }

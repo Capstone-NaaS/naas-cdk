@@ -10,15 +10,25 @@ export class ConnectionIDddb extends Construct {
 
     const ConnectionIdTable = new aws_dynamodb.TableV2(
       this,
-      "ConnectionIdTable-test",
+      "ConnectionIdTable-test-k",
       {
-        tableName: "ConnectionIdTable-test",
+        tableName: "ConnectionIdTable-test-k",
         partitionKey: {
           name: "connectionId",
           type: aws_dynamodb.AttributeType.STRING,
         },
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
+        globalSecondaryIndexes: [
+          {
+            indexName: "user_id-index",
+            partitionKey: {
+              name: "user_id",
+              type: aws_dynamodb.AttributeType.STRING,
+            },
+            projectionType: aws_dynamodb.ProjectionType.ALL,
+          },
+        ],
       }
     );
 
