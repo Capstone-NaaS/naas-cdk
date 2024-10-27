@@ -7,7 +7,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 
 const dynamoDb = DynamoDBDocument.from(new DynamoDB());
-const TABLE_NAME = process.env.TABLE_NAME!;
+const CONNECTION_TABLE = process.env.CONNECTION_TABLE!;
 
 export const handler: Handler = async (event) => {
   const connectionId: AttributeValue = event.requestContext.connectionId;
@@ -20,7 +20,7 @@ export const handler: Handler = async (event) => {
   }
 
   const params: DeleteItemCommandInput = {
-    TableName: TABLE_NAME,
+    TableName: CONNECTION_TABLE,
     Key: {
       connectionId: connectionId,
     },

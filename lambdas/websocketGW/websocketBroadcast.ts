@@ -1,7 +1,10 @@
 import { Handler } from "aws-lambda";
-
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  QueryCommandInput,
+} from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 
 import { NotificationType } from "../types";
@@ -13,7 +16,7 @@ const apiGateway = new ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT,
 });
 
-const CONNECTION_ID_TABLE = process.env.TABLE_NAME;
+const CONNECTION_TABLE = process.env.CONNECTION_TABLE;
 
 interface NotificationsType {
   user_id: string;
@@ -27,8 +30,8 @@ export const handler: Handler = async (event) => {
 
   try {
     // Scan the DynamoDB table to get the connection ID of the provided user ID
-    const queryConnIdParams = {
-      TableName: CONNECTION_ID_TABLE,
+    const queryConnIdParams: QueryCommandInput = {
+      TableName: CONNECTION_TABLE,
       IndexName: "user_id-index",
       KeyConditionExpression: "user_id = :user_id",
       ExpressionAttributeValues: {
@@ -46,21 +49,14 @@ export const handler: Handler = async (event) => {
         : null;
 
     if (connectionId) {
-      const parsedNotifications = notifications.notifications.map(
-        (notification) => {
-          const { ["user_id"]: remove, ...note } = notification;
-          return note;
-        }
-      );
-
       await apiGateway.postToConnection({
         ConnectionId: connectionId,
-        Data: JSON.stringify(parsedNotifications),
+        Data: JSON.stringify(notifications.notifications),
       });
 
       return {
         statusCode: 200,
-        body: JSON.stringify({ message: "Message sent to the user" }),
+        body: JSON.stringify({ message: "Messages sent to the user" }),
       };
     } else {
       return {

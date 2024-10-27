@@ -40,25 +40,6 @@ export class WebSocketGWStack extends Stack {
       "ActiveNotifTableConstruct-test-k"
     );
 
-    // create websocket connect lambda
-    const websocketConnect = new aws_lambda_nodejs.NodejsFunction(
-      this,
-      "websocketConnect-test-k",
-      {
-        runtime: aws_lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        entry: path.join(
-          __dirname,
-          "../../lambdas/websocketGW/websocketConnect.ts"
-        ),
-        environment: {
-          TABLE_NAME: connectionIDddb.ConnectionIdTable.tableName,
-        },
-        timeout: Duration.seconds(100),
-        memorySize: 256,
-      }
-    );
-
     // create websocket disconnect lambda
     const websocketDisconnect = new aws_lambda_nodejs.NodejsFunction(
       this,
@@ -71,7 +52,7 @@ export class WebSocketGWStack extends Stack {
           "../../lambdas/websocketGW/websocketDisconnect.ts"
         ),
         environment: {
-          TABLE_NAME: connectionIDddb.ConnectionIdTable.tableName,
+          CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
@@ -93,7 +74,7 @@ export class WebSocketGWStack extends Stack {
           externalModules: ["@aws-sdk"],
         },
         environment: {
-          TABLE_NAME: connectionIDddb.ConnectionIdTable.tableName,
+          CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/dev`,
         },
         timeout: Duration.seconds(100),
@@ -105,6 +86,27 @@ export class WebSocketGWStack extends Stack {
             resources: ["*"],
           }),
         ],
+      }
+    );
+
+    // create websocket connect lambda
+    const websocketConnect = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      "websocketConnect-test-k",
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/websocketGW/websocketConnect.ts"
+        ),
+        environment: {
+          CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
+          ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
+          WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
+        },
+        timeout: Duration.seconds(100),
+        memorySize: 256,
       }
     );
 
@@ -139,25 +141,6 @@ export class WebSocketGWStack extends Stack {
     );
     this.saveActiveNotification = saveActiveNotification;
 
-    // create updating connection info with userHash lambda
-    const websocketAddConnectionUser = new aws_lambda_nodejs.NodejsFunction(
-      this,
-      "websocketAddConnectionUser-test-k",
-      {
-        runtime: aws_lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        entry: path.join(
-          __dirname,
-          "../../lambdas/websocketGW/websocketAddConnectionUser.ts"
-        ),
-        environment: {
-          TABLE_NAME: connectionIDddb.ConnectionIdTable.tableName,
-        },
-        timeout: Duration.seconds(100),
-        memorySize: 256,
-      }
-    );
-
     // create role for gateway to invoke lambdas
     const role = new aws_iam.Role(this, "LambdaInvokeRole-test-k", {
       roleName: "LambdaInvokeRole-test-k",
@@ -171,7 +154,6 @@ export class WebSocketGWStack extends Stack {
           websocketConnect.functionArn,
           websocketDisconnect.functionArn,
           websocketBroadcast.functionArn,
-          websocketAddConnectionUser.functionArn,
         ],
         actions: ["lambda:InvokeFunction"],
       })
@@ -211,17 +193,6 @@ export class WebSocketGWStack extends Stack {
       }
     );
 
-    const addUserIntegration = new aws_apigatewayv2.CfnIntegration(
-      this,
-      "AddUserIntegration-test-k",
-      {
-        apiId: wsapi.ref,
-        integrationType: "AWS_PROXY",
-        integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${websocketAddConnectionUser.functionArn}/invocations`,
-        credentialsArn: role.roleArn,
-      }
-    );
-
     // create routes
     const connectRoute = new aws_apigatewayv2.CfnRoute(
       this,
@@ -256,29 +227,17 @@ export class WebSocketGWStack extends Stack {
       }
     );
 
-    const addConnectionUserRoute = new aws_apigatewayv2.CfnRoute(
-      this,
-      "AddConnectionUserRoute-test-k",
-      {
-        apiId: wsapi.ref,
-        routeKey: "addConnectionUser",
-        authorizationType: "NONE",
-        target: "integrations/" + addUserIntegration.ref,
-      }
-    );
-
     // grant dynamo permissions to lambdas
     connectionIDddb.ConnectionIdTable.grantWriteData(websocketConnect);
     connectionIDddb.ConnectionIdTable.grantWriteData(websocketDisconnect);
     connectionIDddb.ConnectionIdTable.grantReadData(websocketBroadcast);
-    connectionIDddb.ConnectionIdTable.grantWriteData(
-      websocketAddConnectionUser
-    );
 
     activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
+    activeNotifDdb.ActiveNotifDdb.grantReadData(websocketConnect);
 
     // permission for lambdas to call other lambdas
     websocketBroadcast.grantInvoke(saveActiveNotification);
+    websocketBroadcast.grantInvoke(websocketConnect);
 
     // deployment
     const deployment = new aws_apigatewayv2.CfnDeployment(
@@ -300,7 +259,6 @@ export class WebSocketGWStack extends Stack {
     deployment.node.addDependency(connectRoute);
     deployment.node.addDependency(disconnectRoute);
     deployment.node.addDependency(broadcastRoute);
-    deployment.node.addDependency(addConnectionUserRoute);
 
     // output
     new CfnOutput(this, "wssEndpoint-test-k", {
