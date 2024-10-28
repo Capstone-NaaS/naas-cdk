@@ -21,8 +21,8 @@ export class WebSocketGWStack extends Stack {
     super(scope, id, props);
 
     // create websocket gateway
-    const wsapi = new aws_apigatewayv2.CfnApi(this, "ApiGwSocket-test", {
-      name: "ApiGwSocket-test",
+    const wsapi = new aws_apigatewayv2.CfnApi(this, "ApiGwSocket-test-f", {
+      name: "ApiGwSocket-test-f",
       protocolType: "WEBSOCKET",
       routeSelectionExpression: "$request.body.action",
     });
@@ -30,13 +30,13 @@ export class WebSocketGWStack extends Stack {
     // create dynamo db table to hold connection ids
     const connectionIDddb = new ConnectionIDddb(
       this,
-      "ConnectionIdTableConstruct"
+      "ConnectionIdTableConstruct-test-f"
     );
 
     // create websocket connect lambda
     const websocketConnect = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketConnect-test",
+      "websocketConnect-test-f",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -55,7 +55,7 @@ export class WebSocketGWStack extends Stack {
     // create websocket disconnect lambda
     const websocketDisconnect = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketDisonnect-test",
+      "websocketDisonnect-test-f",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -74,7 +74,7 @@ export class WebSocketGWStack extends Stack {
     // create websocket broadcast lambda
     const websocketBroadcast = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketBroadcast-test",
+      "websocketBroadcast-test-f",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -84,7 +84,7 @@ export class WebSocketGWStack extends Stack {
         ),
         environment: {
           TABLE_NAME: connectionIDddb.ConnectionIdTable.tableName,
-          WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/dev`,
+          WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/Dev-f`, // GIVE STAGE NAME TAKE OUT HARDCODED
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
@@ -100,8 +100,8 @@ export class WebSocketGWStack extends Stack {
     this.websocketBroadcast = websocketBroadcast;
 
     // create role for gateway to invoke lambdas
-    const role = new aws_iam.Role(this, "LambdaInvokeRole", {
-      roleName: "LambdaInvokeRole",
+    const role = new aws_iam.Role(this, "LambdaInvokeRole-test-f", {
+      roleName: "LambdaInvokeRole-test-f",
       assumedBy: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
     });
 
@@ -120,7 +120,7 @@ export class WebSocketGWStack extends Stack {
     // integrate lambdas
     const connectIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "ConnectIntegration-test",
+      "ConnectIntegration-test-f",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -131,7 +131,7 @@ export class WebSocketGWStack extends Stack {
 
     const disconnectIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "DisonnectIntegration-test",
+      "DisonnectIntegration-test-f",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -142,7 +142,7 @@ export class WebSocketGWStack extends Stack {
 
     const broadcastIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "BroadcastIntegration-test",
+      "BroadcastIntegration-test-f",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -154,7 +154,7 @@ export class WebSocketGWStack extends Stack {
     // create routes
     const connectRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "ConnectRoute-test",
+      "ConnectRoute-test-f",
       {
         apiId: wsapi.ref,
         routeKey: "$connect",
@@ -165,7 +165,7 @@ export class WebSocketGWStack extends Stack {
 
     const disconnectRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "DisconnectRoute-test",
+      "DisconnectRoute-test-f",
       {
         apiId: wsapi.ref,
         routeKey: "$disconnect",
@@ -176,7 +176,7 @@ export class WebSocketGWStack extends Stack {
 
     const broadcastRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "BroadcastRoute-test",
+      "BroadcastRoute-test-f",
       {
         apiId: wsapi.ref,
         routeKey: "broadcast",
@@ -193,14 +193,14 @@ export class WebSocketGWStack extends Stack {
     // deployment
     const deployment = new aws_apigatewayv2.CfnDeployment(
       this,
-      "deployment-test",
+      "deployment-test-f",
       {
         apiId: wsapi.ref,
       }
     );
 
-    const stage = new aws_apigatewayv2.CfnStage(this, "DevStage-test", {
-      stageName: "dev",
+    const stage = new aws_apigatewayv2.CfnStage(this, "DevStage-test-f", {
+      stageName: "Dev-f",
       apiId: wsapi.ref,
       autoDeploy: true,
       deploymentId: deployment.ref,
@@ -212,9 +212,9 @@ export class WebSocketGWStack extends Stack {
     deployment.node.addDependency(broadcastRoute);
 
     // output
-    new CfnOutput(this, "wssEndpoint-test", {
-      exportName: "wssEndpoint-test",
-      value: `wss://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/dev`,
+    new CfnOutput(this, "wssEndpoint-test-f", {
+      exportName: "wssEndpoint-test-f",
+      value: `wss://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/dev-f`,
     });
   }
 }

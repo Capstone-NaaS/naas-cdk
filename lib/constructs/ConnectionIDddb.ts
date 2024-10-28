@@ -10,9 +10,9 @@ export class ConnectionIDddb extends Construct {
 
     const ConnectionIdTable = new aws_dynamodb.TableV2(
       this,
-      "ConnectionIdTable-test",
+      "ConnectionIdTableConstruct-test-f",
       {
-        tableName: "ConnectionIdTable-test",
+        tableName: "ConnectionIdTableConstruct-test-f",
         partitionKey: {
           name: "connectionId",
           type: aws_dynamodb.AttributeType.STRING,

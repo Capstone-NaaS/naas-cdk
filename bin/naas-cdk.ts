@@ -5,7 +5,7 @@ import { NaasStage } from "../lib/NaasStage";
 
 const app = new App();
 
-new NaasStage(app, "Dev", {
+new NaasStage(app, "Dev-f", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,

@@ -28,8 +28,9 @@ export const handler: Handler = async (event) => {
     };
 
     const scanResult = await dynamoDb.scan(scanParams).promise();
+    console.log("scanResult", scanResult);
     const connectionIds = scanResult.Items!.map((item) => item.connectionId);
-
+    console.log("connectionIds", connectionIds);
     // Send the message to each connection
     await Promise.all(
       connectionIds.map((connectionId) => {
