@@ -38,10 +38,10 @@ export const handler: Handler = async (event) => {
   const user_id = event.queryStringParameters.user_id;
   const connectionId = event.requestContext.connectionId;
 
-  if (!connectionId) {
+  if (!user_id) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ message: "Connection ID is missing" }),
+      body: JSON.stringify({ message: "User ID is missing" }),
     };
   }
 
@@ -66,6 +66,7 @@ export const handler: Handler = async (event) => {
         InvocationType: "Event",
         Payload: JSON.stringify({
           user_id,
+          connectionId,
           notifications: activeNotifs.Items,
         }),
       });

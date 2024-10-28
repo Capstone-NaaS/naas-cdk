@@ -22,8 +22,8 @@ export class WebSocketGWStack extends Stack {
     super(scope, id, props);
 
     // create websocket gateway
-    const wsapi = new aws_apigatewayv2.CfnApi(this, "ApiGwSocket-test-k", {
-      name: "ApiGwSocket-test-k",
+    const wsapi = new aws_apigatewayv2.CfnApi(this, "ApiGwSocket-test-dev", {
+      name: "ApiGwSocket-test-dev",
       protocolType: "WEBSOCKET",
       routeSelectionExpression: "$request.body.action",
     });
@@ -31,19 +31,19 @@ export class WebSocketGWStack extends Stack {
     // create dynamo db table to hold connection ids
     const connectionIDddb = new ConnectionIDddb(
       this,
-      "ConnectionIdTableConstruct-test-k"
+      "ConnectionIdTableConstruct-test-dev"
     );
 
     // create dynamo db table to hold active notifications
     const activeNotifDdb = new ActiveNotifDdb(
       this,
-      "ActiveNotifTableConstruct-test-k"
+      "ActiveNotifTableConstruct-test-dev"
     );
 
     // create websocket disconnect lambda
     const websocketDisconnect = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketDisonnect-test-k",
+      "websocketDisonnect-test-dev",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -62,7 +62,7 @@ export class WebSocketGWStack extends Stack {
     // create websocket broadcast lambda
     const websocketBroadcast = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketBroadcast-test-k",
+      "websocketBroadcast-test-dev",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -92,7 +92,7 @@ export class WebSocketGWStack extends Stack {
     // create websocket connect lambda
     const websocketConnect = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "websocketConnect-test-k",
+      "websocketConnect-test-dev",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -113,7 +113,7 @@ export class WebSocketGWStack extends Stack {
     // create saving a new active notification lambda
     const saveActiveNotification = new aws_lambda_nodejs.NodejsFunction(
       this,
-      "saveActiveNotification-test-k",
+      "saveActiveNotification-test-dev",
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -129,7 +129,7 @@ export class WebSocketGWStack extends Stack {
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
         },
         timeout: Duration.seconds(100),
-        memorySize: 128,
+        memorySize: 256,
         initialPolicy: [
           new aws_iam.PolicyStatement({
             effect: aws_iam.Effect.ALLOW,
@@ -141,9 +141,38 @@ export class WebSocketGWStack extends Stack {
     );
     this.saveActiveNotification = saveActiveNotification;
 
+    // create notification update lambda
+    const updateNotification = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      "updateNotification-test-dev",
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/websocketGW/updateNotification.ts"
+        ),
+        bundling: {
+          externalModules: ["@aws-sdk"],
+        },
+        environment: {
+          ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
+        },
+        timeout: Duration.seconds(100),
+        memorySize: 256,
+        initialPolicy: [
+          new aws_iam.PolicyStatement({
+            effect: aws_iam.Effect.ALLOW,
+            actions: ["execute-api:ManageConnections"],
+            resources: ["*"],
+          }),
+        ],
+      }
+    );
+
     // create role for gateway to invoke lambdas
-    const role = new aws_iam.Role(this, "LambdaInvokeRole-test-k", {
-      roleName: "LambdaInvokeRole-test-k",
+    const role = new aws_iam.Role(this, "LambdaInvokeRole-test-dev", {
+      roleName: "LambdaInvokeRole-test-dev",
       assumedBy: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
     });
 
@@ -154,6 +183,7 @@ export class WebSocketGWStack extends Stack {
           websocketConnect.functionArn,
           websocketDisconnect.functionArn,
           websocketBroadcast.functionArn,
+          updateNotification.functionArn,
         ],
         actions: ["lambda:InvokeFunction"],
       })
@@ -162,7 +192,7 @@ export class WebSocketGWStack extends Stack {
     // integrate lambdas
     const connectIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "ConnectIntegration-test-k",
+      "ConnectIntegration-test-dev",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -173,7 +203,7 @@ export class WebSocketGWStack extends Stack {
 
     const disconnectIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "DisonnectIntegration-test-k",
+      "DisonnectIntegration-test-dev",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -184,7 +214,7 @@ export class WebSocketGWStack extends Stack {
 
     const broadcastIntegration = new aws_apigatewayv2.CfnIntegration(
       this,
-      "BroadcastIntegration-test-k",
+      "BroadcastIntegration-test-dev",
       {
         apiId: wsapi.ref,
         integrationType: "AWS_PROXY",
@@ -193,10 +223,21 @@ export class WebSocketGWStack extends Stack {
       }
     );
 
+    const updateNotificationIntegration = new aws_apigatewayv2.CfnIntegration(
+      this,
+      "UpdateNotificationIntegration-test-dev",
+      {
+        apiId: wsapi.ref,
+        integrationType: "AWS_PROXY",
+        integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${updateNotification.functionArn}/invocations`,
+        credentialsArn: role.roleArn,
+      }
+    );
+
     // create routes
     const connectRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "ConnectRoute-test-k",
+      "ConnectRoute-test-dev",
       {
         apiId: wsapi.ref,
         routeKey: "$connect",
@@ -207,7 +248,7 @@ export class WebSocketGWStack extends Stack {
 
     const disconnectRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "DisconnectRoute-test-k",
+      "DisconnectRoute-test-dev",
       {
         apiId: wsapi.ref,
         routeKey: "$disconnect",
@@ -218,12 +259,23 @@ export class WebSocketGWStack extends Stack {
 
     const broadcastRoute = new aws_apigatewayv2.CfnRoute(
       this,
-      "BroadcastRoute-test-k",
+      "BroadcastRoute-test-dev",
       {
         apiId: wsapi.ref,
         routeKey: "broadcast",
         authorizationType: "NONE",
         target: "integrations/" + broadcastIntegration.ref,
+      }
+    );
+
+    const updateNotificationRoute = new aws_apigatewayv2.CfnRoute(
+      this,
+      "UpdateNotificationRoute-test-dev",
+      {
+        apiId: wsapi.ref,
+        routeKey: "updateNotification",
+        authorizationType: "NONE",
+        target: "integrations/" + updateNotificationIntegration.ref,
       }
     );
 
@@ -234,6 +286,7 @@ export class WebSocketGWStack extends Stack {
 
     activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
     activeNotifDdb.ActiveNotifDdb.grantReadData(websocketConnect);
+    activeNotifDdb.ActiveNotifDdb.grantReadWriteData(updateNotification);
 
     // permission for lambdas to call other lambdas
     websocketBroadcast.grantInvoke(saveActiveNotification);
@@ -242,13 +295,13 @@ export class WebSocketGWStack extends Stack {
     // deployment
     const deployment = new aws_apigatewayv2.CfnDeployment(
       this,
-      "deployment-test-k",
+      "deployment-test-dev",
       {
         apiId: wsapi.ref,
       }
     );
 
-    const stage = new aws_apigatewayv2.CfnStage(this, "DevStage-test-k", {
+    const stage = new aws_apigatewayv2.CfnStage(this, "DevStage-test-dev", {
       stageName: "dev",
       apiId: wsapi.ref,
       autoDeploy: true,
@@ -259,10 +312,11 @@ export class WebSocketGWStack extends Stack {
     deployment.node.addDependency(connectRoute);
     deployment.node.addDependency(disconnectRoute);
     deployment.node.addDependency(broadcastRoute);
+    deployment.node.addDependency(updateNotificationRoute);
 
     // output
-    new CfnOutput(this, "wssEndpoint-test-k", {
-      exportName: "wssEndpoint-test-k",
+    new CfnOutput(this, "wssEndpoint-test-dev", {
+      exportName: "wssEndpoint-test-dev",
       value: `wss://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/dev`,
     });
   }

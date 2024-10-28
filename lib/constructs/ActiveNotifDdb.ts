@@ -10,9 +10,9 @@ export class ActiveNotifDdb extends Construct {
 
     const ActiveNotifDdb = new aws_dynamodb.TableV2(
       this,
-      "ActiveNotificationTable-test-k",
+      "ActiveNotificationTable-test-dev",
       {
-        tableName: "ActiveNotificationTable-test-k",
+        tableName: "ActiveNotificationTable-test-dev",
         partitionKey: {
           name: "user_id",
           type: aws_dynamodb.AttributeType.STRING,
@@ -23,6 +23,16 @@ export class ActiveNotifDdb extends Construct {
         },
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
+        globalSecondaryIndexes: [
+          {
+            indexName: "notification_id-index",
+            partitionKey: {
+              name: "notification_id",
+              type: aws_dynamodb.AttributeType.STRING,
+            },
+            projectionType: aws_dynamodb.ProjectionType.ALL,
+          },
+        ],
       }
     );
 

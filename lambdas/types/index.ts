@@ -5,3 +5,9 @@ export interface NotificationType {
   created_at: string;
   status: string;
 }
+
+export interface UpdatedNotificationType {
+  notification_id: string;
+  userHash: string;
+  status: string;
+}

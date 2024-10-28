@@ -20,38 +20,39 @@ const CONNECTION_TABLE = process.env.CONNECTION_TABLE;
 
 interface NotificationsType {
   user_id: string;
+  connectionId?: string;
   notifications: NotificationType[];
 }
-export const handler: Handler = async (event) => {
-  // receive array of notifications
-  const notifications: NotificationsType = event;
 
-  const user_id = notifications.user_id;
+export const handler: Handler = async (event: NotificationsType) => {
+  // receive array of notifications
+  let { user_id, notifications, connectionId } = event;
 
   try {
-    // Scan the DynamoDB table to get the connection ID of the provided user ID
-    const queryConnIdParams: QueryCommandInput = {
-      TableName: CONNECTION_TABLE,
-      IndexName: "user_id-index",
-      KeyConditionExpression: "user_id = :user_id",
-      ExpressionAttributeValues: {
-        ":user_id": user_id,
-      },
-      Limit: 1,
-    };
+    if (connectionId === undefined) {
+      // Scan the DynamoDB table to get the connection ID of the provided user ID
+      const queryConnIdParams: QueryCommandInput = {
+        TableName: CONNECTION_TABLE,
+        IndexName: "user_id-index",
+        KeyConditionExpression: "user_id = :user_id",
+        ExpressionAttributeValues: {
+          ":user_id": user_id,
+        },
+        Limit: 1,
+      };
+      const queryConnIdCommand = new QueryCommand(queryConnIdParams);
+      const queryConnIdResult = await docClient.send(queryConnIdCommand);
 
-    const queryConnIdCommand = new QueryCommand(queryConnIdParams);
-    const queryConnIdResult = await docClient.send(queryConnIdCommand);
-
-    const connectionId =
-      queryConnIdResult.Items && queryConnIdResult.Items.length > 0
-        ? queryConnIdResult.Items[0].connectionId
-        : null;
+      connectionId =
+        queryConnIdResult.Items && queryConnIdResult.Items.length > 0
+          ? queryConnIdResult.Items[0].connectionId
+          : null;
+    }
 
     if (connectionId) {
       await apiGateway.postToConnection({
         ConnectionId: connectionId,
-        Data: JSON.stringify(notifications.notifications),
+        Data: JSON.stringify(notifications),
       });
 
       return {
