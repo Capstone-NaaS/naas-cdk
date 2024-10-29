@@ -7,14 +7,14 @@ export interface CustomProps {
 }
 
 export class NotificationLogDb extends Construct {
-  NotificationLogDb: aws_dynamodb.TableV2;
+  NotificationLogTable: aws_dynamodb.TableV2;
 
   constructor(scope: Construct, id: string, props: CustomProps) {
     super(scope, id);
 
     const stageName = props?.stageName || "defaultStage";
 
-    const NotificationLogDb = new aws_dynamodb.TableV2(
+    const NotificationLogTable = new aws_dynamodb.TableV2(
       this,
       `NotificationLogsTable-${stageName}`,
       {
@@ -42,6 +42,6 @@ export class NotificationLogDb extends Construct {
       }
     );
 
-    this.NotificationLogDb = NotificationLogDb;
+    this.NotificationLogTable = NotificationLogTable;
   }
 }

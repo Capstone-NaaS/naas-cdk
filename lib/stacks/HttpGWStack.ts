@@ -6,7 +6,7 @@ import {
   Stack,
   StackProps,
 } from "aws-cdk-lib";
-import { S3LoggingStack } from "./S3LoggingStack";
+import { DynamoLoggingStack } from "./DynamoLoggingStack";
 
 interface HttpGWStackProps extends StackProps {
   stageName: string;
@@ -15,7 +15,7 @@ export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    s3LoggingStack: S3LoggingStack,
+    dynamoLoggingStack: DynamoLoggingStack,
     props?: HttpGWStackProps
   ) {
     super(scope, id, props);
@@ -23,7 +23,7 @@ export class HttpGWStack extends Stack {
     const stageName = props?.stageName || "defaultStage";
 
     // get logging lambda from s3LoggingStack
-    const logLambdaFunction = s3LoggingStack.logLambdaFunction;
+    const dynamoLogger = dynamoLoggingStack.dynamoLogger;
 
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
@@ -43,7 +43,7 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "PostToLogNotificationThenBroadcast",
-        logLambdaFunction
+        dynamoLogger
       ),
     });
 
