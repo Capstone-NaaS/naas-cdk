@@ -6,30 +6,34 @@ export interface CustomProps {
   stageName: string;
 }
 
-export class ConnectionIDddb extends Construct {
-  ConnectionIdTable: aws_dynamodb.TableV2;
+export class ActiveNotifDdb extends Construct {
+  ActiveNotifDdb: aws_dynamodb.TableV2;
 
   constructor(scope: Construct, id: string, props: CustomProps) {
     super(scope, id);
 
     const stageName = props?.stageName || "defaultStage";
 
-    const ConnectionIdTable = new aws_dynamodb.TableV2(
+    const ActiveNotifDdb = new aws_dynamodb.TableV2(
       this,
-      `ConnectionIdTable-${stageName}`,
+      `ActiveNotificationTable-${stageName}`,
       {
-        tableName: `ConnectionIdTable-${stageName}`,
+        tableName: `ActiveNotificationTable-${stageName}`,
         partitionKey: {
-          name: "connectionId",
+          name: "user_id",
+          type: aws_dynamodb.AttributeType.STRING,
+        },
+        sortKey: {
+          name: "created_at",
           type: aws_dynamodb.AttributeType.STRING,
         },
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
         globalSecondaryIndexes: [
           {
-            indexName: "user_id-index",
+            indexName: "notification_id-index",
             partitionKey: {
-              name: "user_id",
+              name: "notification_id",
               type: aws_dynamodb.AttributeType.STRING,
             },
             projectionType: aws_dynamodb.ProjectionType.ALL,
@@ -38,6 +42,6 @@ export class ConnectionIDddb extends Construct {
       }
     );
 
-    this.ConnectionIdTable = ConnectionIdTable;
+    this.ActiveNotifDdb = ActiveNotifDdb;
   }
 }

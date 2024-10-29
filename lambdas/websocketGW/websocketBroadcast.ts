@@ -1,51 +1,70 @@
 import { Handler } from "aws-lambda";
-import * as AWS from "aws-sdk";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  QueryCommand,
+  QueryCommandInput,
+} from "@aws-sdk/lib-dynamodb";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 
-const DynamoDB = AWS.DynamoDB;
-const ApiGatewayManagementApi = AWS.ApiGatewayManagementApi;
+import { NotificationType } from "../types";
 
-const dynamoDb = new DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
+
 const apiGateway = new ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT,
 });
-const TABLE_NAME = process.env.TABLE_NAME!;
 
-export const handler: Handler = async (event) => {
-  const message: string = JSON.parse(event.body).message;
-  const id: string = JSON.parse(event.body).id;
+const CONNECTION_TABLE = process.env.CONNECTION_TABLE;
 
-  if (!message) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message: "Message is required" }),
-    };
-  }
+interface NotificationsType {
+  user_id: string;
+  connectionId?: string;
+  notifications: NotificationType[];
+}
+
+export const handler: Handler = async (event: NotificationsType) => {
+  // receive array of notifications
+  let { user_id, notifications, connectionId } = event;
 
   try {
-    // Scan the DynamoDB table to get all connection IDs
-    const scanParams = {
-      TableName: TABLE_NAME,
-    };
+    if (connectionId === undefined) {
+      // Scan the DynamoDB table to get the connection ID of the provided user ID
+      const queryConnIdParams: QueryCommandInput = {
+        TableName: CONNECTION_TABLE,
+        IndexName: "user_id-index",
+        KeyConditionExpression: "user_id = :user_id",
+        ExpressionAttributeValues: {
+          ":user_id": user_id,
+        },
+        Limit: 1,
+      };
+      const queryConnIdCommand = new QueryCommand(queryConnIdParams);
+      const queryConnIdResult = await docClient.send(queryConnIdCommand);
 
-    const scanResult = await dynamoDb.scan(scanParams).promise();
-    const connectionIds = scanResult.Items!.map((item) => item.connectionId);
+      connectionId =
+        queryConnIdResult.Items && queryConnIdResult.Items.length > 0
+          ? queryConnIdResult.Items[0].connectionId
+          : null;
+    }
 
-    // Send the message to each connection
-    await Promise.all(
-      connectionIds.map((connectionId) => {
-        return apiGateway
-          .postToConnection({
-            ConnectionId: connectionId,
-            Data: JSON.stringify({ id, message }),
-          })
-          .promise();
-      })
-    );
+    if (connectionId) {
+      await apiGateway.postToConnection({
+        ConnectionId: connectionId,
+        Data: JSON.stringify(notifications),
+      });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "Message sent to all connections" }),
-    };
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: "Messages sent to the user" }),
+      };
+    } else {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ message: "User currently not connected" }),
+      };
+    }
   } catch (error) {
     console.error("Error broadcasting message:", error);
     return {

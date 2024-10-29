@@ -1,11 +1,13 @@
 import { Handler } from "aws-lambda";
-import * as AWS from "aws-sdk";
-import { AttributeValue, DeleteItemInput } from "aws-sdk/clients/dynamodb";
+import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import {
+  AttributeValue,
+  DeleteItemCommandInput,
+  DynamoDB,
+} from "@aws-sdk/client-dynamodb";
 
-const DynamoDB = AWS.DynamoDB;
-
-const dynamoDb = new DynamoDB.DocumentClient();
-const TABLE_NAME = process.env.TABLE_NAME!;
+const dynamoDb = DynamoDBDocument.from(new DynamoDB());
+const CONNECTION_TABLE = process.env.CONNECTION_TABLE!;
 
 export const handler: Handler = async (event) => {
   const connectionId: AttributeValue = event.requestContext.connectionId;
@@ -17,15 +19,15 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const params: DeleteItemInput = {
-    TableName: TABLE_NAME,
+  const params: DeleteItemCommandInput = {
+    TableName: CONNECTION_TABLE,
     Key: {
       connectionId: connectionId,
     },
   };
 
   try {
-    await dynamoDb.delete(params).promise();
+    await dynamoDb.delete(params);
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "Disconnected", connectionId }),
