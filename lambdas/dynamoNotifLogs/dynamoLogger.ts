@@ -73,9 +73,9 @@ async function addLog(log: NotificationLog) {
 export const handler: Handler = async (event) => {
   const requestMethod = event.requestContext.http.method;
 
-  if (requestMethod === '"GET"') {
+  if (requestMethod === "GET") {
     // get all logs from Dynamo
-  } else if (requestMethod === '"POST"') {
+  } else if (requestMethod === "POST") {
     const body = JSON.parse(event.body);
     // request to preferenced DB for preferences, hard-coded for now
 
