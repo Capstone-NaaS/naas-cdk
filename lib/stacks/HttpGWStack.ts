@@ -6,29 +6,34 @@ import {
   Stack,
   StackProps,
 } from "aws-cdk-lib";
-import { WebSocketGWStack } from "./WebSocketGWStack";
+import { S3LoggingStack } from "./S3LoggingStack";
 
+interface HttpGWStackProps extends StackProps {
+  stageName: string;
+}
 export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    websocketGwStack: WebSocketGWStack,
-    props?: StackProps
+    s3LoggingStack: S3LoggingStack,
+    props?: HttpGWStackProps
   ) {
     super(scope, id, props);
 
-    // get the websocketBroadcast lambda function from the WebSocketGWStack
-    const saveActiveNotification = websocketGwStack.saveActiveNotification;
+    const stageName = props?.stageName || "defaultStage";
+
+    // get logging lambda from s3LoggingStack
+    const logLambdaFunction = s3LoggingStack.logLambdaFunction;
 
     // create http api gateway
-    const httpApi = new aws_apigatewayv2.HttpApi(this, "HttpApi-test-dev", {
-      apiName: "HttpApi-test-dev",
+    const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
+      apiName: `HttpApi-${stageName}`,
     });
 
     // set stage
-    const stage = new aws_apigatewayv2.CfnStage(this, "DevStage-test-dev", {
+    const stage = new aws_apigatewayv2.CfnStage(this, `${stageName}`, {
       apiId: httpApi.httpApiId,
-      stageName: "dev",
+      stageName: stageName,
       autoDeploy: true,
     });
 
@@ -37,16 +42,16 @@ export class HttpGWStack extends Stack {
       path: "/cdkTest",
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
-        "PostToBroadcastLambda-test-dev",
-        saveActiveNotification
+        "PostToLogNotificationThenBroadcast",
+        logLambdaFunction
       ),
     });
 
     // output endpoint
-    new CfnOutput(this, "HttpApiInvokeUrl-test-dev", {
-      value: `https://${httpApi.apiId}.execute-api.${this.region}.amazonaws.com/dev`,
+    new CfnOutput(this, `HttpApiInvokeUrl-${stageName}`, {
+      value: `https://${httpApi.apiId}.execute-api.${this.region}.amazonaws.com/${stageName}`,
       description: "invoke url for the http api dev stage",
-      exportName: "HttpApiInvokeUrl-test-dev",
+      exportName: `HttpApiInvokeUrl-${stageName}`,
     });
   }
 }
