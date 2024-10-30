@@ -1,8 +1,13 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { Handler } from "aws-lambda";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 import { NotificationLogType } from "../types";
 
@@ -32,7 +37,6 @@ function createLog(
   channel: string,
   notification_id: string
 ): NotificationLogType {
-  // on POST request create a base log object
   if (!notification_id) {
     notification_id = randomUUID();
   }
@@ -57,16 +61,51 @@ async function addLog(log: NotificationLogType) {
   try {
     const data = await docClient.send(new PutCommand(params));
     console.log("result : " + JSON.stringify(data));
+    return data;
   } catch (error) {
     console.error("Error:", error);
+    return error;
   }
+}
+
+async function getLogs() {
+  const params = {
+    TableName: process.env.NOTIFICATION_LOG_TABLE,
+  };
+
+  try {
+    const data = await dbClient.send(new ScanCommand(params));
+
+    if (!data.Items) {
+      return [];
+    }
+    return data.Items.map((item) => unmarshall(item));
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+}
+
+async function getLog(userId: string, createdAt: string) {
+  const params = {
+    TableName: process.env.NOTIFICATION_LOG_TABLE,
+    Key: {
+      // use partition key and sort key in query
+      user_id: userId,
+      created_at: createdAt,
+    },
+  };
+
+  const result = await dbClient.send(new GetCommand(params));
+  return result.Item;
 }
 
 export const handler: Handler = async (event) => {
   const requestMethod = event.requestContext.http.method;
+  let responseData;
 
   if (requestMethod === "GET") {
-    // get all logs from Dynamo
+    responseData = await getLogs();
   } else if (requestMethod === "POST") {
     const body = JSON.parse(event.body);
     // request to preferenced DB for preferences, hard-coded for now
@@ -78,7 +117,9 @@ export const handler: Handler = async (event) => {
       "in-app",
       body.notification_id
     );
+
     await addLog(log);
+    responseData = await getLog(log.log_id, log.notification_id);
 
     // if initial post request
     if (!body.status) {
@@ -88,7 +129,7 @@ export const handler: Handler = async (event) => {
 
   const response = {
     statusCode: 200,
-    body: JSON.stringify("Dynamo Lambda executed successfully"),
+    body: JSON.stringify(responseData),
   };
 
   return response;
