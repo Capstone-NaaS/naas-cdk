@@ -49,6 +49,24 @@ export class HttpGWStack extends Stack {
       ),
     });
 
+    httpApi.addRoutes({
+      path: "/notification",
+      methods: [aws_apigatewayv2.HttpMethod.POST],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "PostRequestToLogNotificationThenBroadcast",
+        dynamoLoggerHttp
+      ),
+    });
+
+    httpApi.addRoutes({
+      path: "/notification-logs",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "GetRequestForLNotificationLogs",
+        dynamoLoggerHttp
+      ),
+    });
+
     // output endpoint
     new CfnOutput(this, `HttpApiInvokeUrl-${stageName}`, {
       value: `https://${httpApi.apiId}.execute-api.${this.region}.amazonaws.com/${stageName}`,
