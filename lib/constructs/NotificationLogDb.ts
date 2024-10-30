@@ -26,6 +26,7 @@ export class NotificationLogDb extends Construct {
           name: "created_at",
           type: aws_dynamodb.AttributeType.STRING,
         },
+        timeToLiveAttribute: "ttl",
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
         globalSecondaryIndexes: [
