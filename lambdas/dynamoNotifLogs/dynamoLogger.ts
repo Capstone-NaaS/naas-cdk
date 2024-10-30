@@ -41,6 +41,8 @@ function createLog(
     notification_id = randomUUID();
   }
 
+  const expirationTime = Math.floor(Date.now() / 1000) + 2592000; // 30 days from now in Unix epoch
+
   return {
     log_id: randomUUID(),
     notification_id,
@@ -49,6 +51,7 @@ function createLog(
     status: status || "notification request received", //notification created, notification sent, notification recieved
     channel, // in-app, email, slack
     message,
+    ttl: expirationTime,
   };
 }
 
