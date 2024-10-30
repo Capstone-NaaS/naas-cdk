@@ -39,16 +39,6 @@ export class HttpGWStack extends Stack {
       autoDeploy: true,
     });
 
-    // post route for cdkTest
-    httpApi.addRoutes({
-      path: "/cdkTest",
-      methods: [aws_apigatewayv2.HttpMethod.POST],
-      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
-        "PostToLogNotificationThenBroadcast",
-        dynamoLoggerHttp
-      ),
-    });
-
     httpApi.addRoutes({
       path: "/notification",
       methods: [aws_apigatewayv2.HttpMethod.POST],
