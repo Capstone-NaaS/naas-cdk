@@ -1,43 +1,37 @@
-import { Stack, StackProps, aws_lambda_nodejs, aws_lambda } from "aws-cdk-lib";
+import {
+  Stack,
+  StackProps,
+  aws_lambda_nodejs,
+  aws_lambda,
+  Lazy,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
+
 import { WebSocketGWStack } from "./WebSocketGWStack";
-import { NotificationLogDb } from "../constructs/NotificationLogDb";
+import { CommonStack } from "./CommonStack";
 
 interface DynamoLoggingStackProps extends StackProps {
   stageName: string;
+  websocketGwStack: WebSocketGWStack;
+  commonStack: CommonStack;
 }
 
 export class DynamoLoggingStack extends Stack {
   // need to share logging lambda
-  public readonly dynamoLogger: aws_lambda_nodejs.NodejsFunction;
+  public readonly dynamoLoggerHttp: aws_lambda_nodejs.NodejsFunction;
 
-  constructor(
-    scope: Construct,
-    id: string,
-    websocketGwStack: WebSocketGWStack,
-    props?: DynamoLoggingStackProps
-  ) {
+  constructor(scope: Construct, id: string, props: DynamoLoggingStackProps) {
     super(scope, id, props);
 
-    const stageName = props?.stageName || "defaultStage";
-
-    // get the websocketBroadcast lambda function from the WebSocketGWStack
-    const saveActiveNotification = websocketGwStack.saveActiveNotification;
-
-    // create dynamo db table to hold notification logs
-    const notificationLogsDB = new NotificationLogDb(
-      this,
-      `NotificationLogsTable-${stageName}`,
-      {
-        stageName,
-      }
-    );
+    const stageName = props.stageName || "defaultStage";
+    const webSocketGWStack = props.websocketGwStack;
+    const commonStack = props.commonStack;
 
     // create dynamoLogger lambda
-    const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
+    const dynamoLoggerHttp = new aws_lambda_nodejs.NodejsFunction(
       this,
-      `dynamoLogger-${stageName}`,
+      `dynamoLogger-http-${stageName}`,
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -46,17 +40,21 @@ export class DynamoLoggingStack extends Stack {
           "../../lambdas/dynamoNotifLogs/dynamoLogger.ts"
         ),
         environment: {
-          NOTIFICATION_LOG_TABLE: `NotificationLogsTable-${stageName}`,
-          SEND_NOTIFICATION: saveActiveNotification.functionName,
+          NOTIFICATION_LOG_TABLE:
+            commonStack.notificationLogsDB.NotificationLogTable.tableName,
+          SEND_NOTIFICATION:
+            webSocketGWStack.saveActiveNotification.functionName,
         },
       }
     );
-    this.dynamoLogger = dynamoLogger;
-
-    // give permission for saveActiveNotification lambda to be invoked by dynamoLogger
-    saveActiveNotification.grantInvoke(dynamoLogger);
+    this.dynamoLoggerHttp = dynamoLoggerHttp;
 
     //give lambda permission to dynamo
-    notificationLogsDB.NotificationLogTable.grantReadWriteData(dynamoLogger);
+    commonStack.notificationLogsDB.NotificationLogTable.grantReadWriteData(
+      dynamoLoggerHttp
+    );
+
+    // allow dynamoLogger to call saveActiveNotification
+    webSocketGWStack.saveActiveNotification.grantInvoke(dynamoLoggerHttp);
   }
 }

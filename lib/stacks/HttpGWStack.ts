@@ -9,21 +9,23 @@ import {
 import { DynamoLoggingStack } from "./DynamoLoggingStack";
 
 interface HttpGWStackProps extends StackProps {
+  dynamoLoggingStack: DynamoLoggingStack;
   stageName: string;
 }
 export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    dynamoLoggingStack: DynamoLoggingStack,
-    props?: HttpGWStackProps
+
+    props: HttpGWStackProps
   ) {
     super(scope, id, props);
 
-    const stageName = props?.stageName || "defaultStage";
+    const stageName = props.stageName || "defaultStage";
+    const dynamoLoggingStack = props.dynamoLoggingStack;
 
     // get logging lambda from s3LoggingStack
-    const dynamoLogger = dynamoLoggingStack.dynamoLogger;
+    const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
 
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
@@ -43,7 +45,7 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "PostToLogNotificationThenBroadcast",
-        dynamoLogger
+        dynamoLoggerHttp
       ),
     });
 

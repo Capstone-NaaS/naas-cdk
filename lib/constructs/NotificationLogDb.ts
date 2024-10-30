@@ -1,6 +1,5 @@
-import { aws_dynamodb } from "aws-cdk-lib";
+import { aws_dynamodb, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { RemovalPolicy } from "aws-cdk-lib";
 
 export interface CustomProps {
   stageName: string;
@@ -20,11 +19,11 @@ export class NotificationLogDb extends Construct {
       {
         tableName: `NotificationLogsTable-${stageName}`,
         partitionKey: {
-          name: "log_id",
+          name: "user_id",
           type: aws_dynamodb.AttributeType.STRING,
         },
         sortKey: {
-          name: "notification_id",
+          name: "created_at",
           type: aws_dynamodb.AttributeType.STRING,
         },
         billing: aws_dynamodb.Billing.onDemand(),

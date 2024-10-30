@@ -1,6 +1,5 @@
-import { aws_dynamodb } from "aws-cdk-lib";
+import { aws_dynamodb, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { RemovalPolicy } from "aws-cdk-lib";
 
 export interface CustomProps {
   stageName: string;

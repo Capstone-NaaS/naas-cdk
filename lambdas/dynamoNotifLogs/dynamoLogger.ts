@@ -4,15 +4,17 @@ import { randomUUID } from "node:crypto";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { Handler } from "aws-lambda";
 
+import { NotificationLogType } from "../types";
+
 const lambdaClient = new LambdaClient();
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 
-async function sendNotification(log: NotificationLog, functionName: string) {
+async function sendNotification(log: NotificationLogType) {
   try {
     const command = new InvokeCommand({
-      FunctionName: functionName,
-      InvocationType: "RequestResponse",
+      FunctionName: process.env.SEND_NOTIFICATION,
+      InvocationType: "Event",
       Payload: JSON.stringify(log),
     });
     const response = await lambdaClient.send(command);
@@ -23,23 +25,13 @@ async function sendNotification(log: NotificationLog, functionName: string) {
   }
 }
 
-interface NotificationLog {
-  log_id: string;
-  notification_id: string;
-  user_id: string;
-  created_at: string;
-  status: string | undefined; //notification created, notification sent, notification recieved
-  channel: string; // in-app, email, slack
-  message: string;
-}
-
 function createLog(
   status: string,
   user_id: string,
   message: string,
   channel: string,
   notification_id: string
-): NotificationLog {
+): NotificationLogType {
   // on POST request create a base log object
   if (!notification_id) {
     notification_id = randomUUID();
@@ -50,13 +42,13 @@ function createLog(
     notification_id,
     user_id,
     created_at: new Date().toUTCString(),
-    status: status && "notification request received", //notification created, notification sent, notification recieved
+    status: status || "notification request received", //notification created, notification sent, notification recieved
     channel, // in-app, email, slack
     message,
   };
 }
 
-async function addLog(log: NotificationLog) {
+async function addLog(log: NotificationLogType) {
   const params = {
     TableName: process.env.NOTIFICATION_LOG_TABLE,
     Item: log,
@@ -90,8 +82,7 @@ export const handler: Handler = async (event) => {
 
     // if initial post request
     if (!body.status) {
-      const functionName = process.env.SEND_NOTIFICATION!;
-      await sendNotification(log, functionName);
+      await sendNotification(log);
     }
   }
 

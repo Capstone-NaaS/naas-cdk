@@ -13,19 +13,21 @@ import * as path from "path";
 
 import { ConnectionIDddb } from "../constructs/ConnectionIDddb";
 import { ActiveNotifDdb } from "../constructs/ActiveNotifDdb";
+import { CommonStack } from "./CommonStack";
 
 interface WebSocketGWStackProps extends StackProps {
   stageName: string;
+  commonStack: CommonStack;
 }
 
 export class WebSocketGWStack extends Stack {
-  // http api gateway needs to share this lambda
   public readonly saveActiveNotification: aws_lambda_nodejs.NodejsFunction;
 
-  constructor(scope: Construct, id: string, props?: WebSocketGWStackProps) {
+  constructor(scope: Construct, id: string, props: WebSocketGWStackProps) {
     super(scope, id, props);
 
-    const stageName = props?.stageName || "defaultStage";
+    const stageName = props.stageName || "defaultStage";
+    const commonStack = props.commonStack;
 
     // create websocket gateway
     const wsapi = new aws_apigatewayv2.CfnApi(
@@ -157,6 +159,26 @@ export class WebSocketGWStack extends Stack {
     );
     this.saveActiveNotification = saveActiveNotification;
 
+    // duplicate dynamo logger for now. this one is for ws gw.
+    // create dynamoLogger lambda
+    const dynamoLoggerWs = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `dynamoLogger-ws-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/dynamoNotifLogs/dynamoLogger.ts"
+        ),
+        environment: {
+          NOTIFICATION_LOG_TABLE:
+            commonStack.notificationLogsDB.NotificationLogTable.tableName,
+          SEND_NOTIFICATION: saveActiveNotification.functionName,
+        },
+      }
+    );
+
     // create notification update lambda
     const updateNotification = new aws_lambda_nodejs.NodejsFunction(
       this,
@@ -173,6 +195,7 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
+          DYNAMO_LOGGER_FN: dynamoLoggerWs.functionName,
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
@@ -185,6 +208,8 @@ export class WebSocketGWStack extends Stack {
         ],
       }
     );
+
+    dynamoLoggerWs.grantInvoke(updateNotification);
 
     // create role for gateway to invoke lambdas
     const role = new aws_iam.Role(this, `LambdaInvokeRole-${stageName}`, {
@@ -303,6 +328,10 @@ export class WebSocketGWStack extends Stack {
     activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
     activeNotifDdb.ActiveNotifDdb.grantReadData(websocketConnect);
     activeNotifDdb.ActiveNotifDdb.grantReadWriteData(updateNotification);
+
+    commonStack.notificationLogsDB.NotificationLogTable.grantReadWriteData(
+      dynamoLoggerWs
+    );
 
     // permission for lambdas to call other lambdas
     websocketBroadcast.grantInvoke(saveActiveNotification);
