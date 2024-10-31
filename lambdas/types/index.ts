@@ -20,6 +20,7 @@ export interface NotificationLogType {
   status: string | undefined; //notification created, notification sent, notification recieved
   channel: string; // in-app, email, slack
   message: string;
+  ttl: number;
 }
 
 export interface LogEvent {
