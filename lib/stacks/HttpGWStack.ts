@@ -6,24 +6,26 @@ import {
   Stack,
   StackProps,
 } from "aws-cdk-lib";
-import { S3LoggingStack } from "./S3LoggingStack";
+import { DynamoLoggingStack } from "./DynamoLoggingStack";
 
 interface HttpGWStackProps extends StackProps {
+  dynamoLoggingStack: DynamoLoggingStack;
   stageName: string;
 }
 export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    s3LoggingStack: S3LoggingStack,
-    props?: HttpGWStackProps
+
+    props: HttpGWStackProps
   ) {
     super(scope, id, props);
 
-    const stageName = props?.stageName || "defaultStage";
+    const stageName = props.stageName || "defaultStage";
+    const dynamoLoggingStack = props.dynamoLoggingStack;
 
     // get logging lambda from s3LoggingStack
-    const logLambdaFunction = s3LoggingStack.logLambdaFunction;
+    const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
 
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
@@ -37,13 +39,21 @@ export class HttpGWStack extends Stack {
       autoDeploy: true,
     });
 
-    // post route for cdkTest
     httpApi.addRoutes({
-      path: "/cdkTest",
+      path: "/notification",
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
-        "PostToLogNotificationThenBroadcast",
-        logLambdaFunction
+        "PostRequestToLogNotificationThenBroadcast",
+        dynamoLoggerHttp
+      ),
+    });
+
+    httpApi.addRoutes({
+      path: "/notification-logs",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "GetRequestForLNotificationLogs",
+        dynamoLoggerHttp
       ),
     });
 

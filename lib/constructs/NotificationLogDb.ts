@@ -5,19 +5,19 @@ export interface CustomProps {
   stageName: string;
 }
 
-export class ActiveNotifDdb extends Construct {
-  ActiveNotifDdb: aws_dynamodb.TableV2;
+export class NotificationLogDb extends Construct {
+  NotificationLogTable: aws_dynamodb.TableV2;
 
   constructor(scope: Construct, id: string, props: CustomProps) {
     super(scope, id);
 
     const stageName = props?.stageName || "defaultStage";
 
-    const ActiveNotifDdb = new aws_dynamodb.TableV2(
+    const NotificationLogTable = new aws_dynamodb.TableV2(
       this,
-      `ActiveNotificationTable-${stageName}`,
+      `NotificationLogsTable-${stageName}`,
       {
-        tableName: `ActiveNotificationTable-${stageName}`,
+        tableName: `NotificationLogsTable-${stageName}`,
         partitionKey: {
           name: "user_id",
           type: aws_dynamodb.AttributeType.STRING,
@@ -26,13 +26,14 @@ export class ActiveNotifDdb extends Construct {
           name: "created_at",
           type: aws_dynamodb.AttributeType.STRING,
         },
+        timeToLiveAttribute: "ttl",
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
         globalSecondaryIndexes: [
           {
-            indexName: "notification_id-index",
+            indexName: "notification_created_at-index",
             partitionKey: {
-              name: "notification_id",
+              name: "created_at",
               type: aws_dynamodb.AttributeType.STRING,
             },
             projectionType: aws_dynamodb.ProjectionType.ALL,
@@ -41,6 +42,6 @@ export class ActiveNotifDdb extends Construct {
       }
     );
 
-    this.ActiveNotifDdb = ActiveNotifDdb;
+    this.NotificationLogTable = NotificationLogTable;
   }
 }

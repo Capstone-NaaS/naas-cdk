@@ -13,8 +13,8 @@ const lambdaClient = new LambdaClient();
 const ACTIVE_NOTIF_TABLE = process.env.ACTIVE_NOTIF_TABLE;
 const WS_BROADCAST_LAMBDA = process.env.WS_BROADCAST_LAMBDA;
 
-export const handler: Handler = async (event) => {
-  const notification: NotificationType = event.body;
+export const handler: Handler = async (body) => {
+  const notification: NotificationType = body;
   const user_id = notification.user_id;
 
   try {
