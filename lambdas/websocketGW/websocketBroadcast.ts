@@ -2,6 +2,7 @@ import { Handler } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   QueryCommand,
   QueryCommandInput,
 } from "@aws-sdk/lib-dynamodb";
@@ -28,6 +29,21 @@ export const handler: Handler = async (event: NotificationsType) => {
   // receive array of notifications
   let { user_id, notifications, connectionId } = event;
 
+  // query user preferences table to see if user wants to receive in-app notifiations
+  const getCommand = new GetCommand({
+    TableName: process.env.USER_PREFERENCES_TABLE,
+    Key: { user_id },
+    ProjectionExpression: "in_app",
+  });
+  const response = await docClient.send(getCommand);
+  const inAppPref = response.Item?.in_app;
+  if (!inAppPref) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "User preference turned off." }),
+    };
+  }
+
   try {
     if (connectionId === undefined) {
       // Scan the DynamoDB table to get the connection ID of the provided user ID
@@ -52,7 +68,7 @@ export const handler: Handler = async (event: NotificationsType) => {
     if (connectionId) {
       await apiGateway.postToConnection({
         ConnectionId: connectionId,
-        Data: JSON.stringify(notifications),
+        Data: JSON.stringify({ topic: "notification", notifications }),
       });
 
       return {

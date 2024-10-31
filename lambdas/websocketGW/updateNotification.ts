@@ -50,7 +50,7 @@ export const handler: Handler = async (event) => {
   if (items.length > 0) {
     // if notification is found
     const item = items[0];
-    const createdAt: string = item.created_at;
+    const { created_at, message } = item;
 
     let response, result;
 
@@ -61,7 +61,7 @@ export const handler: Handler = async (event) => {
           TableName: process.env.ACTIVE_NOTIF_TABLE,
           Key: {
             user_id,
-            created_at: createdAt,
+            created_at: created_at,
           },
           UpdateExpression: "SET #status = :status",
           ExpressionAttributeNames: {
@@ -87,7 +87,7 @@ export const handler: Handler = async (event) => {
           TableName: process.env.ACTIVE_NOTIF_TABLE,
           Key: {
             user_id,
-            created_at: createdAt,
+            created_at: created_at,
           },
         };
 
@@ -111,7 +111,7 @@ export const handler: Handler = async (event) => {
     const body = {
       status,
       user_id,
-      message: "in-app",
+      message,
       notification_id,
     };
 
