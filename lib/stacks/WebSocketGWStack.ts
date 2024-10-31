@@ -4,8 +4,10 @@ import {
   aws_iam,
   aws_lambda,
   aws_lambda_nodejs,
+  aws_logs,
   CfnOutput,
   Duration,
+  RemovalPolicy,
   Stack,
   StackProps,
 } from "aws-cdk-lib";
@@ -337,6 +339,21 @@ export class WebSocketGWStack extends Stack {
     websocketBroadcast.grantInvoke(saveActiveNotification);
     websocketBroadcast.grantInvoke(websocketConnect);
 
+    // creating log group for access logs
+    const logGroup = new aws_logs.LogGroup(this, "WSGatewayAccessLogs", {
+      logGroupName: `WSGatewayAccessLogs-${stageName}`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: aws_logs.RetentionDays.ONE_MONTH,
+    });
+
+    // create a role for API Gateway
+    const apiGatewayRole = new aws_iam.Role(this, "ApiGatewayLoggingRole", {
+      assumedBy: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
+    });
+
+    // Grant API Gateway permissions to write to Cloudwatch logs
+    logGroup.grantWrite(apiGatewayRole);
+
     // deployment
     const deployment = new aws_apigatewayv2.CfnDeployment(
       this,
@@ -351,6 +368,19 @@ export class WebSocketGWStack extends Stack {
       apiId: wsapi.ref,
       autoDeploy: true,
       deploymentId: deployment.ref,
+      accessLogSettings: {
+        destinationArn: logGroup.logGroupArn,
+        format: JSON.stringify({
+          requestId: "$context.requestId",
+          userAgent: "$context.identity.userAgent",
+          sourceIp: "$context.identity.sourceIp",
+          requestTime: "$context.requestTime",
+          httpMethod: "$context.httpMethod",
+          path: "$context.path",
+          status: "$context.status",
+          responseLength: "$context.responseLength",
+        }),
+      },
     });
 
     // add deployment dependencies
