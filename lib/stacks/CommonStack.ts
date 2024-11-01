@@ -8,6 +8,7 @@ import {
 import { Construct } from "constructs";
 
 import { NotificationLogDb } from "../constructs/NotificationLogDb";
+import { UserPreferencesDdb } from "../constructs/UserPreferencesDdb";
 
 interface CommonStackProps extends StackProps {
   stageName: string;
@@ -16,6 +17,7 @@ interface CommonStackProps extends StackProps {
 export class CommonStack extends Stack {
   // need to share logging lambda
   public readonly notificationLogsDB: NotificationLogDb;
+  public readonly userPreferencesDdb: UserPreferencesDdb;
 
   constructor(scope: Construct, id: string, props: CommonStackProps) {
     super(scope, id, props);
@@ -30,7 +32,16 @@ export class CommonStack extends Stack {
         stageName,
       }
     );
-
     this.notificationLogsDB = notificationLogsDB;
+
+    // create dynamo db table to hold notification logs
+    const userPreferencesDdb = new UserPreferencesDdb(
+      this,
+      `UserPreferencesTable-${stageName}`,
+      {
+        stageName,
+      }
+    );
+    this.userPreferencesDdb = userPreferencesDdb;
   }
 }

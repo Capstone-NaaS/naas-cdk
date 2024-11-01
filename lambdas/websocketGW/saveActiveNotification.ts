@@ -8,15 +8,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
-<<<<<<< Updated upstream
-import { NotificationLogType } from "../types";
-=======
-<<<<<<< Updated upstream
-import { NotificationType } from "../types";
-=======
 import { LogEvent, NotificationLogType } from "../types";
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
@@ -25,15 +17,6 @@ const lambdaClient = new LambdaClient();
 const ACTIVE_NOTIF_TABLE = process.env.ACTIVE_NOTIF_TABLE;
 const WS_BROADCAST_LAMBDA = process.env.WS_BROADCAST_LAMBDA;
 
-<<<<<<< Updated upstream
-export const handler: Handler = async (log: NotificationLogType) => {
-  const { log_id, channel, ttl, ...notification } = log;
-  // const notification: NotificationType = ;
-=======
-<<<<<<< Updated upstream
-export const handler: Handler = async (body) => {
-  const notification: NotificationType = body;
-=======
 async function sendLog(logEvent: LogEvent) {
   try {
     const command = new InvokeCommand({
@@ -51,9 +34,6 @@ async function sendLog(logEvent: LogEvent) {
 
 export const handler: Handler = async (log: NotificationLogType) => {
   const { log_id, channel, ttl, ...notification } = log;
-  // const notification: NotificationType = ;
->>>>>>> Stashed changes
->>>>>>> Stashed changes
   const user_id = notification.user_id;
 
   // query user preferences table to see if user wants to receive in-app notifiations
@@ -77,7 +57,7 @@ export const handler: Handler = async (log: NotificationLogType) => {
       TableName: ACTIVE_NOTIF_TABLE,
       Item: {
         ...notification,
-        created_at: new Date().toUTCString(),
+        created_at: new Date(notification.created_at).toISOString(),
         status: "unread",
       },
     };

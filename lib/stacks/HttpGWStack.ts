@@ -27,7 +27,7 @@ export class HttpGWStack extends Stack {
     const stageName = props.stageName || "defaultStage";
     const dynamoLoggingStack = props.dynamoLoggingStack;
 
-    // get logging lambda from s3LoggingStack
+    // get logging lambda from dynamo logging stack
     const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
 
     // create http api gateway
