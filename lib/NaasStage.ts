@@ -47,6 +47,7 @@ export class NaasStage extends Stage {
       env: props?.env,
       stageName: this.stageName,
       dynamoLoggingStack,
+      commonStack,
     });
   }
 }

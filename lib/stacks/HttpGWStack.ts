@@ -8,13 +8,19 @@ import {
   aws_logs,
   RemovalPolicy,
   aws_iam,
+  aws_lambda_nodejs,
+  aws_lambda,
 } from "aws-cdk-lib";
 import { DynamoLoggingStack } from "./DynamoLoggingStack";
+import * as path from "path";
+import { CommonStack } from "./CommonStack";
 
 interface HttpGWStackProps extends StackProps {
   dynamoLoggingStack: DynamoLoggingStack;
   stageName: string;
+  commonStack: CommonStack;
 }
+
 export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
@@ -26,9 +32,32 @@ export class HttpGWStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const dynamoLoggingStack = props.dynamoLoggingStack;
+    const commonStack = props.commonStack;
 
     // get logging lambda from s3LoggingStack
     const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
+
+    // create userFunctions lambda
+    const userFunctions = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `userFunctions-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/userAttributes/userFunctions.js"
+        ),
+        environment: {
+          USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,
+        },
+      }
+    );
+
+    // give lambda permission to access dynamo
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      userFunctions
+    );
 
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
@@ -85,6 +114,15 @@ export class HttpGWStack extends Stack {
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "GetRequestForLNotificationLogs",
         dynamoLoggerHttp
+      ),
+    });
+
+    httpApi.addRoutes({
+      path: "/user",
+      methods: [aws_apigatewayv2.HttpMethod.ANY],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "UserFunctions",
+        userFunctions
       ),
     });
 
