@@ -290,6 +290,27 @@ export class WebSocketGWStack extends Stack {
       }
     );
 
+    const websocketAuthorizer = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `websocketAuthorizer-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/websocketGW/websocketAuthorizer.ts"
+        ),
+        environment: {
+          USER_ATTRIBUTES_TABLE: "notification-users",
+        },
+        timeout: Duration.seconds(30),
+        memorySize: 256,
+      }
+    );
+    websocketAuthorizer.role?.addManagedPolicy(
+      aws_iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess")
+    );
+
     // create role for gateway to invoke lambdas
     const role = new aws_iam.Role(this, `LambdaInvokeRole-${stageName}`, {
       roleName: `LambdaInvokeRole-${stageName}`,
@@ -306,6 +327,7 @@ export class WebSocketGWStack extends Stack {
           sendInitialData.functionArn,
           updateNotification.functionArn,
           updatePreference.functionArn,
+          websocketAuthorizer.functionArn,
         ],
         actions: ["lambda:InvokeFunction"],
       })
@@ -377,6 +399,28 @@ export class WebSocketGWStack extends Stack {
       }
     );
 
+    // add authorizer
+
+    const websocketAuthorizerCfn = new aws_apigatewayv2.CfnAuthorizer(
+      this,
+      `websocketAuthorizerCfn-${stageName}`,
+      {
+        apiId: wsapi.ref,
+        authorizerType: "REQUEST",
+        authorizerUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${websocketAuthorizer.functionArn}/invocations`,
+        identitySource: ["route.request.querystring.user_id"],
+        name: `websocketAuthorizerCfn-${stageName}`,
+      }
+    );
+
+    websocketAuthorizer.addPermission("ApiGatewayInvokePermission", {
+      action: "lambda:InvokeFunction",
+      principal: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
+      sourceArn: `arn:aws:execute-api:${Stack.of(this).region}:${
+        Stack.of(this).account
+      }:${wsapi.ref}/*`,
+    });
+
     // create routes
     const connectRoute = new aws_apigatewayv2.CfnRoute(
       this,
@@ -384,7 +428,8 @@ export class WebSocketGWStack extends Stack {
       {
         apiId: wsapi.ref,
         routeKey: "$connect",
-        authorizationType: "NONE",
+        authorizationType: "CUSTOM",
+        authorizerId: websocketAuthorizerCfn.ref,
         target: "integrations/" + connectIntegration.ref,
       }
     );
