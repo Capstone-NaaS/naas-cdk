@@ -68,11 +68,7 @@ export const handler: Handler = async (event) => {
     const preference = response.Item;
     delete preference?.user_id;
 
-    let activeNotifs;
-
-    if (preference?.in_app) {
-      activeNotifs = await getActiveNotifications(user_id);
-    }
+    const activeNotifs = await getActiveNotifications(user_id);
 
     const connectionId = await getConnectionId(user_id);
 
