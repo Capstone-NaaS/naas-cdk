@@ -139,12 +139,12 @@ const editUser = async (event) => {
 }
 
 const getUser = async (event) => {
-  const { user_id } = event.queryStringParameters;
+  const { id } = event.queryStringParameters;
 
   const params = {
     TableName: process.env.USERDB,
     Key: {
-      id: user_id
+      id,
     },
   };
 
