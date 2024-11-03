@@ -34,7 +34,7 @@ export class HttpGWStack extends Stack {
     const dynamoLoggingStack = props.dynamoLoggingStack;
     const commonStack = props.commonStack;
 
-    // get logging lambda from s3LoggingStack
+    // get logging lambda from dynamo logging stack
     const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
 
     // create userFunctions lambda

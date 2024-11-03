@@ -1,14 +1,9 @@
-import {
-  Stack,
-  StackProps,
-  aws_lambda_nodejs,
-  aws_lambda,
-  Lazy,
-} from "aws-cdk-lib";
+import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 import { NotificationLogDb } from "../constructs/NotificationLogDb";
 import { UserAttributesDb } from "../constructs/UserAttributesDb";
+import { UserPreferencesDdb } from "../constructs/UserPreferencesDdb";
 
 interface CommonStackProps extends StackProps {
   stageName: string;
@@ -17,6 +12,7 @@ interface CommonStackProps extends StackProps {
 export class CommonStack extends Stack {
   // need to share logging lambda and user attributes
   public readonly notificationLogsDB: NotificationLogDb;
+  public readonly userPreferencesDdb: UserPreferencesDdb;
   public readonly userAttributesDB: UserAttributesDb;
 
   constructor(scope: Construct, id: string, props: CommonStackProps) {
@@ -32,8 +28,17 @@ export class CommonStack extends Stack {
         stageName,
       }
     );
-
     this.notificationLogsDB = notificationLogsDB;
+
+    // create dynamo db table to hold notification logs
+    const userPreferencesDdb = new UserPreferencesDdb(
+      this,
+      `UserPreferencesTable-${stageName}`,
+      {
+        stageName,
+      }
+    );
+    this.userPreferencesDdb = userPreferencesDdb;
 
     // create user attributes table
     const userAttributesDB = new UserAttributesDb(
@@ -43,7 +48,6 @@ export class CommonStack extends Stack {
         stageName,
       }
     );
-
     this.userAttributesDB = userAttributesDB;
   }
 }

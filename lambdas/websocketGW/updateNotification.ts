@@ -5,13 +5,38 @@ import {
   QueryCommand,
   UpdateCommand,
   DeleteCommand,
+  QueryCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { UpdatedNotificationType, LogEvent } from "../types";
+import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 
-const lambdaClient = new LambdaClient();
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
+const lambdaClient = new LambdaClient();
+
+const apiGateway = new ApiGatewayManagementApi({
+  endpoint: process.env.WEBSOCKET_ENDPOINT,
+});
+
+// look up connection ID
+async function getConnectionId(user_id: string) {
+  const queryConnIdParams: QueryCommandInput = {
+    TableName: process.env.CONNECTION_TABLE,
+    IndexName: "user_id-index",
+    KeyConditionExpression: "user_id = :user_id",
+    ExpressionAttributeValues: {
+      ":user_id": user_id,
+    },
+    Limit: 1,
+  };
+  const queryConnIdCommand = new QueryCommand(queryConnIdParams);
+  const queryConnIdResult = await docClient.send(queryConnIdCommand);
+
+  return queryConnIdResult.Items && queryConnIdResult.Items.length > 0
+    ? queryConnIdResult.Items[0].connectionId
+    : null;
+}
 
 async function sendLog(logEvent: LogEvent) {
   try {
@@ -50,9 +75,10 @@ export const handler: Handler = async (event) => {
   if (items.length > 0) {
     // if notification is found
     const item = items[0];
-    const createdAt: string = item.created_at;
+    const { created_at, message } = item;
 
     let response, result;
+    const connectionId = await getConnectionId(user_id);
 
     switch (status) {
       case "read":
@@ -61,7 +87,7 @@ export const handler: Handler = async (event) => {
           TableName: process.env.ACTIVE_NOTIF_TABLE,
           Key: {
             user_id,
-            created_at: createdAt,
+            created_at: created_at,
           },
           UpdateExpression: "SET #status = :status",
           ExpressionAttributeNames: {
@@ -72,14 +98,29 @@ export const handler: Handler = async (event) => {
           },
         };
 
-        const updateCommand = new UpdateCommand(updateParams);
-        result = await docClient.send(updateCommand);
+        try {
+          const updateCommand = new UpdateCommand(updateParams);
+          result = await docClient.send(updateCommand);
 
-        response = {
-          statusCode: 200,
-          body: JSON.stringify(result),
-        };
+          await apiGateway.postToConnection({
+            ConnectionId: connectionId,
+            Data: JSON.stringify({
+              topic: "notif_updated",
+              status: "read",
+              notification_id,
+            }),
+          });
 
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(result),
+          };
+        } catch (error) {
+          response = {
+            statusCode: 500,
+            body: JSON.stringify(error),
+          };
+        }
         break;
       case "delete":
         // delete the notification from the active notifications table
@@ -87,17 +128,33 @@ export const handler: Handler = async (event) => {
           TableName: process.env.ACTIVE_NOTIF_TABLE,
           Key: {
             user_id,
-            created_at: createdAt,
+            created_at: created_at,
           },
         };
 
-        const deleteCommand = new DeleteCommand(deleteParams);
-        result = await docClient.send(deleteCommand);
+        try {
+          const deleteCommand = new DeleteCommand(deleteParams);
+          result = await docClient.send(deleteCommand);
 
-        response = {
-          statusCode: 200,
-          body: JSON.stringify(result),
-        };
+          await apiGateway.postToConnection({
+            ConnectionId: connectionId,
+            Data: JSON.stringify({
+              topic: "notif_updated",
+              status: "delete",
+              notification_id,
+            }),
+          });
+
+          response = {
+            statusCode: 200,
+            body: JSON.stringify(result),
+          };
+        } catch (error) {
+          response = {
+            statusCode: 500,
+            body: JSON.stringify(error),
+          };
+        }
 
         break;
       default:
@@ -111,7 +168,7 @@ export const handler: Handler = async (event) => {
     const body = {
       status,
       user_id,
-      message: "in-app",
+      message,
       notification_id,
     };
 
