@@ -27,6 +27,7 @@ export class WebSocketGWStack extends Stack {
   public readonly saveActiveNotification: aws_lambda_nodejs.NodejsFunction;
   public readonly updateNotification: aws_lambda_nodejs.NodejsFunction;
   public readonly sendInitialData: aws_lambda_nodejs.NodejsFunction;
+  public readonly websocketBroadcast: aws_lambda_nodejs.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: WebSocketGWStackProps) {
     super(scope, id, props);
@@ -98,6 +99,7 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
+          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
@@ -113,6 +115,7 @@ export class WebSocketGWStack extends Stack {
         ],
       }
     );
+    this.websocketBroadcast = websocketBroadcast;
 
     // create websocket connect lambda
     const websocketConnect = new aws_lambda_nodejs.NodejsFunction(
@@ -151,7 +154,6 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
-          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,

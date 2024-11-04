@@ -8,7 +8,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
-import { LogEvent, NotificationLogType } from "../types";
+import { NotificationLogType } from "../types";
 
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
@@ -17,39 +17,9 @@ const lambdaClient = new LambdaClient();
 const ACTIVE_NOTIF_TABLE = process.env.ACTIVE_NOTIF_TABLE;
 const WS_BROADCAST_LAMBDA = process.env.WS_BROADCAST_LAMBDA;
 
-async function sendLog(logEvent: LogEvent) {
-  try {
-    const command = new InvokeCommand({
-      FunctionName: process.env.DYNAMO_LOGGER_FN,
-      InvocationType: "Event",
-      Payload: JSON.stringify(logEvent),
-    });
-    const response = await lambdaClient.send(command);
-    return "Log sent to the dynamo logger";
-  } catch (error) {
-    console.log("Error invoking the Lambda function: ", error);
-    return error;
-  }
-}
-
 export const handler: Handler = async (log: NotificationLogType) => {
   const { log_id, channel, ttl, ...notification } = log;
   const user_id = notification.user_id;
-
-  // query user preferences table to see if user wants to receive in-app notifiations
-  const getCommand = new GetCommand({
-    TableName: process.env.USER_PREFERENCES_TABLE,
-    Key: { user_id },
-    ProjectionExpression: "in_app",
-  });
-  const response = await docClient.send(getCommand);
-  const inAppPref = response.Item?.in_app;
-  if (!inAppPref) {
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "User preference turned off." }),
-    };
-  }
 
   try {
     // Save received notification to table of active notifications
@@ -65,25 +35,6 @@ export const handler: Handler = async (log: NotificationLogType) => {
     const saveNotifCommand = new PutCommand(saveNotifParams);
     const dbResponse = await docClient.send(saveNotifCommand);
 
-    // add log to indicate we added this to list of active notifications
-    const body = {
-      status: "notification queued",
-      user_id,
-      message: notification.message,
-      notification_id: notification.notification_id,
-    };
-
-    const log = {
-      requestContext: {
-        http: {
-          method: "POST",
-        },
-      },
-      body: JSON.stringify(body),
-    };
-
-    await sendLog(log);
-
     // broadcast to connected client
     // this next lambda determines whether the user is currently connected
     const lambdaCommand = new InvokeCommand({
@@ -91,7 +42,7 @@ export const handler: Handler = async (log: NotificationLogType) => {
       InvocationType: "Event",
       Payload: JSON.stringify({
         user_id,
-        notifications: [saveNotifParams.Item],
+        notification: saveNotifParams.Item,
       }),
     });
 

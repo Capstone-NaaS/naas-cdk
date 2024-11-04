@@ -54,7 +54,7 @@ export class DynamoLoggingStack extends Stack {
       dynamoLogger
     );
 
-    dynamoLogger.grantInvoke(websocketGwStack.saveActiveNotification);
+    dynamoLogger.grantInvoke(websocketGwStack.websocketBroadcast);
     dynamoLogger.grantInvoke(websocketGwStack.updateNotification);
     dynamoLogger.grantInvoke(websocketGwStack.sendInitialData);
 

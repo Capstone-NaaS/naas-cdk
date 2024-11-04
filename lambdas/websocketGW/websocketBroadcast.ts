@@ -8,26 +8,49 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 
-import { NotificationType } from "../types";
+import { LogEvent, NotificationType } from "../types";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
+const lambdaClient = new LambdaClient();
 
 const apiGateway = new ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT,
 });
 
-const CONNECTION_TABLE = process.env.CONNECTION_TABLE;
-
-interface NotificationsType {
-  user_id: string;
-  connectionId?: string;
-  notifications: NotificationType[];
+async function sendLog(logEvent: LogEvent) {
+  try {
+    const command = new InvokeCommand({
+      FunctionName: process.env.DYNAMO_LOGGER_FN,
+      InvocationType: "Event",
+      Payload: JSON.stringify(logEvent),
+    });
+    const response = await lambdaClient.send(command);
+    return "Log sent to the dynamo logger";
+  } catch (error) {
+    console.log("Error invoking the Lambda function: ", error);
+    return error;
+  }
 }
 
-export const handler: Handler = async (event: NotificationsType) => {
+interface EventType {
+  user_id: string;
+  connectionId?: string;
+  notification: NotificationType;
+}
+
+export const handler: Handler = async (event: EventType) => {
   // receive array of notifications
-  let { user_id, notifications, connectionId } = event;
+  let { user_id, notification, connectionId } = event;
+
+  // add log to indicate we added this to list of active notifications
+  const body = {
+    status: "notification queued",
+    user_id,
+    message: notification.message,
+    notification_id: notification.notification_id,
+  };
 
   // query user preferences table to see if user wants to receive in-app notifiations
   const getCommand = new GetCommand({
@@ -38,6 +61,19 @@ export const handler: Handler = async (event: NotificationsType) => {
   const response = await docClient.send(getCommand);
   const inAppPref = response.Item?.in_app;
   if (!inAppPref) {
+    body.status = "Not sent. User pref turned off.";
+
+    const log = {
+      requestContext: {
+        http: {
+          method: "POST",
+        },
+      },
+      body: JSON.stringify(body),
+    };
+
+    await sendLog(log);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ message: "User preference turned off." }),
@@ -48,7 +84,7 @@ export const handler: Handler = async (event: NotificationsType) => {
     if (connectionId === undefined) {
       // Scan the DynamoDB table to get the connection ID of the provided user ID
       const queryConnIdParams: QueryCommandInput = {
-        TableName: CONNECTION_TABLE,
+        TableName: process.env.CONNECTION_TABLE,
         IndexName: "user_id-index",
         KeyConditionExpression: "user_id = :user_id",
         ExpressionAttributeValues: {
@@ -65,10 +101,26 @@ export const handler: Handler = async (event: NotificationsType) => {
           : null;
     }
 
+    body.status = "Notification queued.";
+
+    const log = {
+      requestContext: {
+        http: {
+          method: "POST",
+        },
+      },
+      body: JSON.stringify(body),
+    };
+
+    await sendLog(log);
+
     if (connectionId) {
       await apiGateway.postToConnection({
         ConnectionId: connectionId,
-        Data: JSON.stringify({ topic: "notification", notifications }),
+        Data: JSON.stringify({
+          topic: "notification",
+          notifications: [notification],
+        }),
       });
 
       return {
