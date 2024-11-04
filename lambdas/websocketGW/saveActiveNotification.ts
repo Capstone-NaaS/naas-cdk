@@ -14,17 +14,21 @@ const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 const lambdaClient = new LambdaClient();
 
-const ACTIVE_NOTIF_TABLE = process.env.ACTIVE_NOTIF_TABLE;
-const WS_BROADCAST_LAMBDA = process.env.WS_BROADCAST_LAMBDA;
-
 export const handler: Handler = async (log: NotificationLogType) => {
   const { log_id, channel, ttl, ...notification } = log;
   const user_id = notification.user_id;
 
+  const getCommand = new GetCommand({
+    TableName: process.env.USER_PREFERENCES_TABLE,
+    Key: { user_id },
+    ProjectionExpression: "in_app",
+  });
+  const response = await docClient.send(getCommand);
+  const inAppPref = response.Item?.in_app;
+
   try {
-    // Save received notification to table of active notifications
     const saveNotifParams = {
-      TableName: ACTIVE_NOTIF_TABLE,
+      TableName: process.env.ACTIVE_NOTIF_TABLE,
       Item: {
         ...notification,
         created_at: new Date(notification.created_at).toISOString(),
@@ -32,13 +36,16 @@ export const handler: Handler = async (log: NotificationLogType) => {
       },
     };
 
-    const saveNotifCommand = new PutCommand(saveNotifParams);
-    const dbResponse = await docClient.send(saveNotifCommand);
+    if (inAppPref) {
+      // Save received notification to table of active notifications
+      const saveNotifCommand = new PutCommand(saveNotifParams);
+      const dbResponse = await docClient.send(saveNotifCommand);
+    }
 
     // broadcast to connected client
     // this next lambda determines whether the user is currently connected
     const lambdaCommand = new InvokeCommand({
-      FunctionName: WS_BROADCAST_LAMBDA,
+      FunctionName: process.env.WS_BROADCAST_LAMBDA,
       InvocationType: "Event",
       Payload: JSON.stringify({
         user_id,
@@ -46,11 +53,11 @@ export const handler: Handler = async (log: NotificationLogType) => {
       }),
     });
 
-    await lambdaClient.send(lambdaCommand);
+    const lambdaResponse = await lambdaClient.send(lambdaCommand);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: dbResponse }),
+      body: JSON.stringify({ message: lambdaResponse }),
     };
   } catch (error) {
     console.error("Error saving notification:", error);
