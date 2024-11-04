@@ -122,7 +122,7 @@ export const handler: Handler = async (event) => {
     );
 
     await addLog(log);
-    responseData = await getLog(log.log_id, log.notification_id);
+    responseData = await getLog(log.user_id, log.created_at);
 
     // if initial post request
     if (!body.status) {
