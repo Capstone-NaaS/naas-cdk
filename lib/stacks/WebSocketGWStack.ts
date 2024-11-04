@@ -17,7 +17,6 @@ import { ConnectionIDddb } from "../constructs/ConnectionIDddb";
 import { ActiveNotifDdb } from "../constructs/ActiveNotifDdb";
 
 import { CommonStack } from "./CommonStack";
-import { randomUUID } from "crypto";
 
 interface WebSocketGWStackProps extends StackProps {
   stageName: string;
@@ -27,21 +26,13 @@ interface WebSocketGWStackProps extends StackProps {
 export class WebSocketGWStack extends Stack {
   public readonly saveActiveNotification: aws_lambda_nodejs.NodejsFunction;
   public readonly updateNotification: aws_lambda_nodejs.NodejsFunction;
+  public readonly sendInitialData: aws_lambda_nodejs.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: WebSocketGWStackProps) {
     super(scope, id, props);
 
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
-
-    const DYNAMO_LOGGER_FN = `${stageName}-WebSocketGWStac-dynamoLoggerWs-${randomUUID().slice(
-      0,
-      6
-    )}`;
-    const SAVE_NOTIFICATION_FN = `${stageName}-WebSocketGWStac-saveActiveNotification-${randomUUID().slice(
-      0,
-      6
-    )}`;
 
     // create websocket gateway
     const wsapi = new aws_apigatewayv2.CfnApi(
@@ -160,37 +151,17 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
-          DYNAMO_LOGGER_FN,
+          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
-        functionName: SAVE_NOTIFICATION_FN,
+        functionName: commonStack.SAVE_NOTIFICATION_FN,
       }
     );
     this.saveActiveNotification = saveActiveNotification;
-
-    // create dynamoLogger lambda
-    const dynamoLoggerWs = new aws_lambda_nodejs.NodejsFunction(
-      this,
-      `dynamoLoggerWs-${stageName}`,
-      {
-        runtime: aws_lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        entry: path.join(
-          __dirname,
-          "../../lambdas/dynamoNotifLogs/dynamoLogger.ts"
-        ),
-        environment: {
-          NOTIFICATION_LOG_TABLE:
-            commonStack.notificationLogsDB.NotificationLogTable.tableName,
-          SEND_NOTIFICATION: SAVE_NOTIFICATION_FN,
-        },
-        functionName: DYNAMO_LOGGER_FN,
-      }
-    );
 
     // create notification update lambda
     const updateNotification = new aws_lambda_nodejs.NodejsFunction(
@@ -209,7 +180,7 @@ export class WebSocketGWStack extends Stack {
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
-          DYNAMO_LOGGER_FN,
+          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
         },
         timeout: Duration.seconds(100),
@@ -289,6 +260,7 @@ export class WebSocketGWStack extends Stack {
         ],
       }
     );
+    this.sendInitialData = sendInitialData;
 
     const websocketAuthorizer = new aws_lambda_nodejs.NodejsFunction(
       this,
@@ -301,14 +273,12 @@ export class WebSocketGWStack extends Stack {
           "../../lambdas/websocketGW/websocketAuthorizer.ts"
         ),
         environment: {
-          USER_ATTRIBUTES_TABLE: "notification-users",
+          USER_ATTRIBUTES_TABLE:
+            commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(30),
         memorySize: 256,
       }
-    );
-    websocketAuthorizer.role?.addManagedPolicy(
-      aws_iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess")
     );
 
     // create role for gateway to invoke lambdas
@@ -502,6 +472,7 @@ export class WebSocketGWStack extends Stack {
     activeNotifDdb.ActiveNotifDdb.grantReadData(websocketConnect);
     activeNotifDdb.ActiveNotifDdb.grantReadWriteData(updateNotification);
     activeNotifDdb.ActiveNotifDdb.grantReadData(sendInitialData);
+    activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
 
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
       websocketBroadcast
@@ -515,17 +486,13 @@ export class WebSocketGWStack extends Stack {
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
       sendInitialData
     );
-    commonStack.notificationLogsDB.NotificationLogTable.grantWriteData(
-      dynamoLoggerWs
+    commonStack.userAttributesDB.UserAttributesTable.grantReadData(
+      websocketAuthorizer
     );
 
     // permission for lambdas to call other lambdas
     websocketBroadcast.grantInvoke(saveActiveNotification);
     websocketBroadcast.grantInvoke(websocketConnect);
-
-    // allow functions to call dynamoLoggerWs
-    dynamoLoggerWs.grantInvoke(saveActiveNotification);
-    dynamoLoggerWs.grantInvoke(updateNotification);
 
     // creating log group for access logs
     const logGroup = new aws_logs.LogGroup(this, "WSGatewayAccessLogs", {

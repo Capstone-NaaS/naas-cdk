@@ -28,10 +28,8 @@ export const handler: Handler = async function (event, context, callback) {
   const userHash = event.queryStringParameters.user_id;
   const authorized = await userHashExists(userHash);
   if (authorized) {
-    console.log("approved");
     callback(null, generateAllow("me", event.methodArn));
   } else {
-    console.log("denied");
     callback("Unauthorized");
   }
 };

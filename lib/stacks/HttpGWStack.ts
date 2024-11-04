@@ -35,7 +35,7 @@ export class HttpGWStack extends Stack {
     const commonStack = props.commonStack;
 
     // get logging lambda from dynamo logging stack
-    const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
+    const dynamoLogger = dynamoLoggingStack.dynamoLogger;
 
     // create userFunctions lambda
     const userFunctions = new aws_lambda_nodejs.NodejsFunction(
@@ -104,7 +104,7 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "PostRequestToLogNotificationThenBroadcast",
-        dynamoLoggerHttp
+        dynamoLogger
       ),
     });
 
@@ -113,7 +113,7 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.GET],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "GetRequestForLNotificationLogs",
-        dynamoLoggerHttp
+        dynamoLogger
       ),
     });
 
