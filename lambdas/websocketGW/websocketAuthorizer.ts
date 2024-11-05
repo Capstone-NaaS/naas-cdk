@@ -1,32 +1,22 @@
 import { Handler } from "aws-lambda";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import crypto from "node:crypto";
 
-async function userHashExists(userHash: string) {
-  const client = new DynamoDBClient({});
-  const dynamoDb = DynamoDBDocumentClient.from(client);
+async function validateHash(
+  userId: string,
+  userHash: string
+): Promise<boolean> {
+  let computedHash = crypto
+    .createHmac("sha256", process.env.SECRET_KEY)
+    .update(userId)
+    .digest("base64");
 
-  const params = {
-    TableName: process.env.USER_ATTRIBUTES_TABLE,
-    IndexName: "userHash-index",
-    KeyConditionExpression: "userHash = :userHash",
-    ExpressionAttributeValues: {
-      ":userHash": userHash,
-    },
-  };
-
-  try {
-    const data = await dynamoDb.send(new QueryCommand(params));
-    return data.Items.length > 0;
-  } catch (error) {
-    console.error("Error querying GSI:", error);
-    return error;
-  }
+  return computedHash === userHash;
 }
 
 export const handler: Handler = async function (event, context, callback) {
-  const userHash = event.queryStringParameters.user_id;
-  const authorized = await userHashExists(userHash);
+  const { userId, userHash } = event.queryStringParameters;
+
+  const authorized = await validateHash(userId, userHash);
   if (authorized) {
     callback(null, generateAllow("me", event.methodArn));
   } else {

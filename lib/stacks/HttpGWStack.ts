@@ -17,6 +17,8 @@ import {
 import { DynamoLoggingStack } from "./DynamoLoggingStack";
 import * as path from "path";
 import { CommonStack } from "./CommonStack";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 interface HttpGWStackProps extends StackProps {
   dynamoLoggingStack: DynamoLoggingStack;
@@ -66,7 +68,7 @@ export class HttpGWStack extends Stack {
         handler: "handler",
         entry: path.join(__dirname, "../../lambdas/httpGW/httpAuthorizer.ts"),
         environment: {
-          SECRET_KEY: "",
+          SECRET_KEY: process.env.SECRET_KEY!,
         },
         timeout: Duration.seconds(29),
         memorySize: 256,
