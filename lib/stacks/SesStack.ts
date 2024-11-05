@@ -1,30 +1,55 @@
 import { Construct } from "constructs";
-import { Stack, StackProps, aws_ses, aws_iam } from "aws-cdk-lib";
+import {
+  Stack,
+  StackProps,
+  aws_ses,
+  aws_iam,
+  aws_lambda_nodejs,
+  aws_lambda,
+} from "aws-cdk-lib";
+import { CommonStack } from "./CommonStack";
+import * as path from "path";
 
 interface SesStackProps extends StackProps {
   stageName: string;
+  commonStack: CommonStack;
 }
 
 export class SesStack extends Stack {
+  public readonly sendEmail: aws_lambda_nodejs.NodejsFunction;
+
   constructor(scope: Construct, id: string, props: SesStackProps) {
     super(scope, id, props);
 
     const stageName = props.stageName || "defaultStage";
+    const commonStack = props.commonStack;
 
-    // // Create an SES Identity email
-    // const senderEmail = "frances.h.gray@gmail.com";
-    // const emailIdentity = new aws_ses.EmailIdentity(
-    //   this,
-    //   `EmailIdentity-${stageName}`,
-    //   {
-    //     emailAddress: senderEmail,
-    //   }
-    // );
+    // create email sending Lambda
+    const sendEmail = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `sendEmail-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../../lambdas/email/sendEmail.ts"),
+        environment: {
+          USER_PREFERENCES_TABLE:
+            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+        },
+      }
+    );
+    this.sendEmail = sendEmail;
 
-    // iam policy to lambda function
-    const sesPolicy = new aws_iam.PolicyStatement({
-      actions: ["ses:SendEmail", "ses:SendRawEmail"],
-      resources: ["*"],
+    // grant permission to sendEmail lambda to send emails with SES
+    sendEmail.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: ["ses:SendEmail"],
+        resources: ["*"],
+      })
+    );
+
+    new aws_ses.CfnEmailIdentity(this, `SenderEmailIdentity-${stageName}`, {
+      emailIdentity: "frances.h.gray@gmail.com",
     });
   }
 }

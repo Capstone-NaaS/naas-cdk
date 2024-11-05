@@ -4,15 +4,17 @@ import * as path from "path";
 
 import { WebSocketGWStack } from "./WebSocketGWStack";
 import { CommonStack } from "./CommonStack";
+import { SesStack } from "./SesStack";
 
 interface DynamoLoggingStackProps extends StackProps {
   stageName: string;
   commonStack: CommonStack;
   websocketGwStack: WebSocketGWStack;
+  sesStack: SesStack;
 }
 
 export class DynamoLoggingStack extends Stack {
-  // need to share logging lambda
+  // need to share logging and send email lambda
   public readonly dynamoLoggerHttp: aws_lambda_nodejs.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: DynamoLoggingStackProps) {
@@ -21,21 +23,7 @@ export class DynamoLoggingStack extends Stack {
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
     const websocketGwStack = props.websocketGwStack;
-
-    // create email sending Lambda
-    const sendEmail = new aws_lambda_nodejs.NodejsFunction(
-      this,
-      `sendEmail-${stageName}`,
-      {
-        runtime: aws_lambda.Runtime.NODEJS_20_X,
-        handler: "handler",
-        entry: path.join(__dirname, "../../lambdas/email/sendEmail.ts"),
-        environment: {
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
-        },
-      }
-    );
+    const sendEmail = props.sesStack.sendEmail;
 
     // create dynamoLogger lambda
     const dynamoLoggerHttp = new aws_lambda_nodejs.NodejsFunction(

@@ -30,6 +30,13 @@ export class NaasStage extends Stage {
       }
     );
 
+    // Add SES to stage
+    const sesStack = new SesStack(this, `SES-${this.stageName}`, {
+      env: props?.env,
+      stageName: this.stageName,
+      commonStack,
+    });
+
     // Add dynamo logging stage
     const dynamoLoggingStack = new DynamoLoggingStack(
       this,
@@ -39,6 +46,7 @@ export class NaasStage extends Stage {
         stageName: this.stageName,
         websocketGwStack,
         commonStack,
+        sesStack,
       }
     );
 
@@ -47,12 +55,6 @@ export class NaasStage extends Stage {
       env: props?.env,
       stageName: this.stageName,
       dynamoLoggingStack,
-    });
-
-    // Add SES to stage
-    new SesStack(this, `SES-${this.stageName}`, {
-      env: props?.env,
-      stageName: this.stageName,
     });
   }
 }
