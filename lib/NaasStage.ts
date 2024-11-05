@@ -5,6 +5,7 @@ import { CommonStack } from "./stacks/CommonStack";
 import { DynamoLoggingStack } from "./stacks/DynamoLoggingStack";
 import { WebSocketGWStack } from "./stacks/WebSocketGWStack";
 import { HttpGWStack } from "./stacks/HttpGWStack";
+import { SesStack } from "./stacks/SesStack";
 
 // Define the stage
 export class NaasStage extends Stage {
@@ -29,8 +30,7 @@ export class NaasStage extends Stage {
       }
     );
 
-    // Add dynamo logging stack
-    // create dynamo logging stack
+    // Add dynamo logging stage
     const dynamoLoggingStack = new DynamoLoggingStack(
       this,
       `DynamoLoggingStack-${this.stageName}`,
@@ -47,6 +47,12 @@ export class NaasStage extends Stage {
       env: props?.env,
       stageName: this.stageName,
       dynamoLoggingStack,
+    });
+
+    // Add SES to stage
+    new SesStack(this, `SES-${this.stageName}`, {
+      env: props?.env,
+      stageName: this.stageName,
     });
   }
 }
