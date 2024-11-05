@@ -24,16 +24,6 @@ export class UserAttributesDb extends Construct {
         },
         billing: aws_dynamodb.Billing.onDemand(),
         removalPolicy: RemovalPolicy.DESTROY,
-        globalSecondaryIndexes: [
-          {
-            indexName: "userHash-index",
-            partitionKey: {
-              name: "userHash",
-              type: aws_dynamodb.AttributeType.STRING,
-            },
-            projectionType: aws_dynamodb.ProjectionType.ALL,
-          },
-        ],
       }
     );
 

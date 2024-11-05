@@ -85,6 +85,7 @@ export class HttpGWStack extends Stack {
           responseTypes: [
             aws_apigatewayv2_authorizers.HttpLambdaResponseType.SIMPLE,
           ],
+          resultsCacheTtl: Duration.seconds(0),
         }
       );
 

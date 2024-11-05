@@ -2,21 +2,21 @@ import { Handler } from "aws-lambda";
 import crypto from "node:crypto";
 
 async function validateHash(
-  userId: string,
+  user_id: string,
   userHash: string
 ): Promise<boolean> {
   let computedHash = crypto
     .createHmac("sha256", process.env.SECRET_KEY)
-    .update(userId)
+    .update(user_id)
     .digest("base64");
 
   return computedHash === userHash;
 }
 
 export const handler: Handler = async function (event, context, callback) {
-  const { userId, userHash } = event.queryStringParameters;
+  const { user_id, userHash } = event.queryStringParameters;
 
-  const authorized = await validateHash(userId, userHash);
+  const authorized = await validateHash(user_id, userHash);
   if (authorized) {
     callback(null, generateAllow("me", event.methodArn));
   } else {
