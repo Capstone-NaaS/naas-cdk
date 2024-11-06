@@ -15,8 +15,9 @@ import * as path from "path";
 
 import { ConnectionIDddb } from "../constructs/ConnectionIDddb";
 import { ActiveNotifDdb } from "../constructs/ActiveNotifDdb";
-
 import { CommonStack } from "./CommonStack";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 interface WebSocketGWStackProps extends StackProps {
   stageName: string;
@@ -275,8 +276,7 @@ export class WebSocketGWStack extends Stack {
           "../../lambdas/websocketGW/websocketAuthorizer.ts"
         ),
         environment: {
-          USER_ATTRIBUTES_TABLE:
-            commonStack.userAttributesDB.UserAttributesTable.tableName,
+          SECRET_KEY: process.env.SECRET_KEY!,
         },
         timeout: Duration.seconds(30),
         memorySize: 256,
