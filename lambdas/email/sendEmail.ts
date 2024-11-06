@@ -34,7 +34,7 @@ export const handler: Handler = async (log) => {
     // email params:
     const params = {
       Destination: {
-        ToAddresses: ["frances.h.gray@gmail.com"], // must be verified emails in sandbox
+        ToAddresses: [process.env.RECEIVER_EMAIL], // must be verified emails in sandbox
       },
       Message: {
         Body: {
@@ -46,7 +46,7 @@ export const handler: Handler = async (log) => {
           Data: "Test Email from Lambda",
         },
       },
-      Source: "frances.h.gray@gmail.com", // must be verified in SES
+      Source: process.env.SENDER_EMAIL, // must be verified in SES
     };
     try {
       const sendEmailCommand = new SendEmailCommand(params);

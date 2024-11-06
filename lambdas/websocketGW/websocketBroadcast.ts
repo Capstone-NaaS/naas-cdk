@@ -50,6 +50,7 @@ export const handler: Handler = async (event: EventType) => {
     user_id,
     message: notification.message,
     notification_id: notification.notification_id,
+    channel: "in-app",
   };
 
   // query user preferences table to see if user wants to receive in-app notifiations

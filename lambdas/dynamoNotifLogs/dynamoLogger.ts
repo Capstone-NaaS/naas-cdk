@@ -128,43 +128,55 @@ export const handler: Handler = async (event) => {
   if (requestMethod === "GET") {
     responseData = await getLogs();
   } else if (requestMethod === "POST") {
-    // available notification channels
-    const CHANNELS = ["in-app", "email"];
-
     const body = JSON.parse(event.body);
+    // if this is the initial notification request:
+    if (!body.status) {
+      const CHANNELS = ["in-app", "email"];
 
-    // for each channel, create a log and send to notification_logs db
-    notificationsLogged = await Promise.all(
-      CHANNELS.map(async (channel) => {
-        const log = createLog(
-          body.status,
-          body.user_id,
-          body.message,
-          `${channel}`,
-          body.notification_id
-        );
-        const addedLog = await addLog(log);
-        if (!addedLog) {
-          console.error(`Failed to add log for channel: ${channel}`);
-          return null; // Indicate failure
-        } else {
-          console.log(
-            `Successfully added log for channel ${channel}:`,
-            addedLog
+      // for each channel, create a log and send to notification_logs db
+      notificationsLogged = await Promise.all(
+        CHANNELS.map(async (channel) => {
+          const log = createLog(
+            body.status,
+            body.user_id,
+            body.message,
+            `${channel}`,
+            body.notification_id
           );
-        }
-        const response = await getLog(log.user_id, log.created_at);
-        // if initial post request
-        if (!body.status) {
+          const addedLog = await addLog(log);
+          if (!addedLog) {
+            console.error(`Failed to add log for channel: ${channel}`);
+            return null; // Indicate failure
+          } else {
+            console.log(
+              `Successfully added log for channel ${channel}:`,
+              addedLog
+            );
+          }
+
+          // send to a lambda depending on the channel
           if (channel === "in-app") {
             await sendNotification(log);
           } else if (channel === "email") {
             await emailNotification(log);
           }
-        }
-        return response;
-      })
-    );
+
+          // for each channel, return log info
+          const response = await getLog(log.user_id, log.created_at);
+          return response;
+        })
+      );
+    } else {
+      // if this is for an updated log:
+      const log = createLog(
+        body.status,
+        body.user_id,
+        body.message,
+        body.channel,
+        body.notification_id
+      );
+      await addLog(log);
+    }
   }
 
   const response = {
