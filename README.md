@@ -22,11 +22,13 @@ This CDK project will automatically deploy AWS resources to the cloud.
 
 ## Constructs
 
-| Construct           | Description                                   |
-| ------------------- | --------------------------------------------- |
-| `ActiveNotifDdb`    | DynamoDB table to store active notifications. |
-| `ConnectionIDddb`   | DynamoDB table to store connection IDs.       |
-| `NotificationLogDb` | DynamoDB table to store notification logs.    |
+| Construct            | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `ActiveNotifDdb`     | DynamoDB table to store active notifications. |
+| `ConnectionIDddb`    | DynamoDB table to store connection IDs.       |
+| `NotificationLogDb`  | DynamoDB table to store notification logs.    |
+| `UserAttributesDb`   | DynamoDB table to store user attributes.      |
+| `UserPreferencesDdb` | DynamoDB table to store user preferences.     |
 
 ## Stacks
 
@@ -39,16 +41,22 @@ This CDK project will automatically deploy AWS resources to the cloud.
 
 ## Resources
 
-| Resource    | Name                      | Description                                                  |
-| ----------- | ------------------------- | ------------------------------------------------------------ |
-| API Gateway | `ApiGwSocket`             | WebSocket API gateway.                                       |
-| API Gateway | `HttpApi`                 | HTTP API gateway.                                            |
-| DynamoDB    | `ActiveNotificationTable` | Stores active notifications.                                 |
-| DynamoDB    | `ConnectionIdTable`       | Stores current WS connection information.                    |
-| DynamoDB    | `NotificationLogDb`       | Stores logs of notifications.                                |
-| Lambda      | `saveActionNotification`  | Adds a notification to the DynamoDB of active notifications. |
-| Lambda      | `dynamoLogger`            | Logs notification to DynamoDB table.                         |
-| Lambda      | `updateNotification`      | Updates the status of an active notification.                |
-| Lambda      | `websocketConnect`        | Lambda to handle websocket `$connect` route.                 |
-| Lambda      | `websocketDisconnect`     | Lambda to handle websocket `$disconnect` route.              |
-| Lambda      | `websocketBroadcast`      | Lambda to handle websocket `broadcast` route.                |
+| Resource    | Name                      | Description                                                       |
+| ----------- | ------------------------- | ----------------------------------------------------------------- |
+| API Gateway | `ApiGwSocket`             | WebSocket API gateway.                                            |
+| API Gateway | `HttpApi`                 | HTTP API gateway.                                                 |
+| DynamoDB    | `ActiveNotificationTable` | Stores active notifications.                                      |
+| DynamoDB    | `ConnectionIdTable`       | Stores current WS connection information.                         |
+| DynamoDB    | `NotificationLogDb`       | Stores logs of notifications.                                     |
+| DynamoDB    | `UserAttributesDb`        | Stores user attributes.                                           |
+| DynamoDB    | `UserPreferencesDdb`      | Stores user preferences.                                          |
+| Lambda      | `dynamoLogger`            | Logs notification to DynamoDB table.                              |
+| Lambda      | `saveActionNotification`  | Adds a notification to the DynamoDB of active notifications.      |
+| Lambda      | `sendInitialData`         | Sends stored data to the client on initial log in.                |
+| Lambda      | `updateNotification`      | Updates the status of an active notification.                     |
+| Lambda      | `updatePreference`        | Updates the notification preferences of a user.                   |
+| Lambda      | `userFunctions`           | Route handler for the `/user` route in the HTTP API Gateway.      |
+| Lambda      | `websocketAuthorizer`     | Lambda authorizer for the `$connect` route in the WS API Gateway. |
+| Lambda      | `websocketBroadcast`      | Lambda to handle websocket `broadcast` route.                     |
+| Lambda      | `websocketConnect`        | Lambda to handle websocket `$connect` route.                      |
+| Lambda      | `websocketDisconnect`     | Lambda to handle websocket `$disconnect` route.                   |

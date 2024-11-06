@@ -1,4 +1,10 @@
-import { Stack, StackProps, aws_lambda_nodejs, aws_lambda } from "aws-cdk-lib";
+import {
+  Stack,
+  StackProps,
+  aws_lambda_nodejs,
+  aws_lambda,
+  aws_iam,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
 
@@ -14,8 +20,8 @@ interface DynamoLoggingStackProps extends StackProps {
 }
 
 export class DynamoLoggingStack extends Stack {
-  // need to share logging and send email lambda
-  public readonly dynamoLoggerHttp: aws_lambda_nodejs.NodejsFunction;
+  // need to share logging lambda
+  public readonly dynamoLogger: aws_lambda_nodejs.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: DynamoLoggingStackProps) {
     super(scope, id, props);
@@ -26,9 +32,9 @@ export class DynamoLoggingStack extends Stack {
     const sendEmail = props.sesStack.sendEmail;
 
     // create dynamoLogger lambda
-    const dynamoLoggerHttp = new aws_lambda_nodejs.NodejsFunction(
+    const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
       this,
-      `dynamoLoggerHttp-${stageName}`,
+      `dynamoLogger-${stageName}`,
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -39,26 +45,28 @@ export class DynamoLoggingStack extends Stack {
         environment: {
           NOTIFICATION_LOG_TABLE:
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
-          SEND_NOTIFICATION:
-            websocketGwStack.saveActiveNotification.functionName,
+          SEND_NOTIFICATION: commonStack.SAVE_NOTIFICATION_FN,
           EMAIL_NOTIFICATION: sendEmail.functionName,
         },
+        functionName: commonStack.DYNAMO_LOGGER_FN,
       }
     );
-    this.dynamoLoggerHttp = dynamoLoggerHttp;
+    this.dynamoLogger = dynamoLogger;
 
     //give lambda permission to dynamo
     commonStack.notificationLogsDB.NotificationLogTable.grantReadWriteData(
-      dynamoLoggerHttp
-    );
-    commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadWriteData(
-      sendEmail
+      dynamoLogger
     );
 
-    //give dynamoLogger permission to invoke saveActiveNotifications
-    websocketGwStack.saveActiveNotification.grantInvoke(dynamoLoggerHttp);
+    dynamoLogger.grantInvoke(websocketGwStack.websocketBroadcast);
+    dynamoLogger.grantInvoke(websocketGwStack.updateNotification);
+    dynamoLogger.grantInvoke(websocketGwStack.sendInitialData);
 
-    // give dynamoLogger permissions to invoke sendEmail lambda
-    sendEmail.grantInvoke(dynamoLoggerHttp);
+    dynamoLogger.addToRolePolicy(
+      new aws_iam.PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [`arn:aws:lambda:${this.region}:${this.account}:function:*`],
+      })
+    ); // this gives dynamoLogger the permission to invoke any lambda
   }
 }

@@ -8,13 +8,22 @@ import {
   aws_logs,
   RemovalPolicy,
   aws_iam,
+  aws_lambda_nodejs,
+  aws_lambda,
+  Duration,
+  aws_apigatewayv2_authorizers,
 } from "aws-cdk-lib";
+
 import { DynamoLoggingStack } from "./DynamoLoggingStack";
+import * as path from "path";
+import { CommonStack } from "./CommonStack";
 
 interface HttpGWStackProps extends StackProps {
   dynamoLoggingStack: DynamoLoggingStack;
   stageName: string;
+  commonStack: CommonStack;
 }
+
 export class HttpGWStack extends Stack {
   constructor(
     scope: Construct,
@@ -26,9 +35,61 @@ export class HttpGWStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const dynamoLoggingStack = props.dynamoLoggingStack;
+    const commonStack = props.commonStack;
 
     // get logging lambda from dynamo logging stack
-    const dynamoLoggerHttp = dynamoLoggingStack.dynamoLoggerHttp;
+    const dynamoLogger = dynamoLoggingStack.dynamoLogger;
+
+    // create userFunctions lambda
+    const userFunctions = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `userFunctions-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/userAttributes/userFunctions.js"
+        ),
+        environment: {
+          USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,
+        },
+      }
+    );
+
+    // create authorizer lambda
+    const httpAuthorizer = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `httpAuthorizer-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../../lambdas/httpGW/httpAuthorizer.ts"),
+        environment: {
+          SECRET_KEY: "",
+        },
+        timeout: Duration.seconds(29),
+        memorySize: 256,
+      }
+    );
+
+    // create http authorizer
+    const lambdaAuthorizer =
+      new aws_apigatewayv2_authorizers.HttpLambdaAuthorizer(
+        "LambdaAuthorizer",
+        httpAuthorizer,
+        {
+          identitySource: ["$request.header.Authorization"],
+          responseTypes: [
+            aws_apigatewayv2_authorizers.HttpLambdaResponseType.SIMPLE,
+          ],
+        }
+      );
+
+    // give lambda permission to access dynamo
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      userFunctions
+    );
 
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
@@ -75,8 +136,13 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "PostRequestToLogNotificationThenBroadcast",
-        dynamoLoggerHttp
+        dynamoLogger,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
       ),
+      authorizer: lambdaAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -84,8 +150,27 @@ export class HttpGWStack extends Stack {
       methods: [aws_apigatewayv2.HttpMethod.GET],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "GetRequestForLNotificationLogs",
-        dynamoLoggerHttp
+        dynamoLogger,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
       ),
+      authorizer: lambdaAuthorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/user",
+      methods: [aws_apigatewayv2.HttpMethod.ANY],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "UserFunctions",
+        userFunctions,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
+      ),
+      authorizer: lambdaAuthorizer,
     });
 
     // output endpoint
