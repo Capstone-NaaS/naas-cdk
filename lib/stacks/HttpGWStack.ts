@@ -176,6 +176,34 @@ export class HttpGWStack extends Stack {
       authorizer: lambdaAuthorizer,
     });
 
+    httpApi.addRoutes({
+      path: "/user/{userId}",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "UserFunctions",
+        userFunctions,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
+      ),
+      authorizer: lambdaAuthorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/users",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "UserFunctions",
+        userFunctions,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
+      ),
+      authorizer: lambdaAuthorizer,
+    });
+
     // output endpoint
     new CfnOutput(this, `HttpApiInvokeUrl-${stageName}`, {
       value: `https://${httpApi.apiId}.execute-api.${this.region}.amazonaws.com/${stageName}`,
