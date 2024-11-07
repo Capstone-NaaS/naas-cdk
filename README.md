@@ -38,6 +38,7 @@ This CDK project will automatically deploy AWS resources to the cloud.
 | `WebSocketGW`   | WebSocket API Gateway for communicating with clients. |
 | `HttpGW`        | HTTP API Gateway for accepting REST endpoints.        |
 | `DynamoLogging` | Adding notification logs to DynamoDB table.           |
+| `SesStack`      | Uses SES to send email notifications                  |
 
 ## Resources
 
@@ -60,3 +61,4 @@ This CDK project will automatically deploy AWS resources to the cloud.
 | Lambda      | `websocketBroadcast`      | Lambda to handle websocket `broadcast` route.                     |
 | Lambda      | `websocketConnect`        | Lambda to handle websocket `$connect` route.                      |
 | Lambda      | `websocketDisconnect`     | Lambda to handle websocket `$disconnect` route.                   |
+| Lambda      | `sendEmail`               | Lambda to trigger SES                                             |

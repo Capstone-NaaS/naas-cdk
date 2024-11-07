@@ -16,12 +16,14 @@ import * as path from "path";
 import { ConnectionIDddb } from "../constructs/ConnectionIDddb";
 import { ActiveNotifDdb } from "../constructs/ActiveNotifDdb";
 import { CommonStack } from "./CommonStack";
+import { SesStack } from "./SesStack";
 import * as dotenv from "dotenv";
 dotenv.config();
 
 interface WebSocketGWStackProps extends StackProps {
   stageName: string;
   commonStack: CommonStack;
+  sesStack: SesStack;
 }
 
 export class WebSocketGWStack extends Stack {
@@ -35,6 +37,7 @@ export class WebSocketGWStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
+    const sendEmail = props.sesStack.sendEmail;
 
     // create websocket gateway
     const wsapi = new aws_apigatewayv2.CfnApi(
@@ -488,6 +491,7 @@ export class WebSocketGWStack extends Stack {
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
       sendInitialData
     );
+    commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(sendEmail);
     commonStack.userAttributesDB.UserAttributesTable.grantReadData(
       websocketAuthorizer
     );

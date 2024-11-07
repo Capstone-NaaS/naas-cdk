@@ -10,11 +10,13 @@ import * as path from "path";
 
 import { WebSocketGWStack } from "./WebSocketGWStack";
 import { CommonStack } from "./CommonStack";
+import { SesStack } from "./SesStack";
 
 interface DynamoLoggingStackProps extends StackProps {
   stageName: string;
   commonStack: CommonStack;
   websocketGwStack: WebSocketGWStack;
+  sesStack: SesStack;
 }
 
 export class DynamoLoggingStack extends Stack {
@@ -27,6 +29,7 @@ export class DynamoLoggingStack extends Stack {
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
     const websocketGwStack = props.websocketGwStack;
+    const sendEmail = props.sesStack.sendEmail;
 
     // create dynamoLogger lambda
     const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
@@ -43,6 +46,7 @@ export class DynamoLoggingStack extends Stack {
           NOTIFICATION_LOG_TABLE:
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
           SEND_NOTIFICATION: commonStack.SAVE_NOTIFICATION_FN,
+          EMAIL_NOTIFICATION: sendEmail.functionName,
         },
         functionName: commonStack.DYNAMO_LOGGER_FN,
       }
