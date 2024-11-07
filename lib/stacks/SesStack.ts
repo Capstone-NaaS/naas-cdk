@@ -49,7 +49,7 @@ export class SesStack extends Stack {
     );
 
     new aws_ses.CfnEmailIdentity(this, `SenderEmailIdentity-${stageName}`, {
-      emailIdentity: "frances.h.gray@gmail.com",
+      emailIdentity: process.env.SENDER_EMAIL,
     });
   }
 }
