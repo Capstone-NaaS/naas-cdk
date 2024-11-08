@@ -1,4 +1,5 @@
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { ScanCommand, DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { unmarshall } = require("@aws-sdk/util-dynamodb");
 const {
   DynamoDBDocumentClient,
   PutCommand,
@@ -139,7 +140,7 @@ const editUser = async (event) => {
 }
 
 const getUser = async (event) => {
-  const { id } = event.queryStringParameters;
+  const id = event.pathParameters.userId;
 
   const params = {
     TableName: process.env.USERDB,
@@ -169,10 +170,33 @@ const getUser = async (event) => {
   }
 }
 
+const getAllUsers = async (event) => {
+  const params = {
+    TableName: process.env.USERDB,
+  };
+
+  try {
+    const data = await dynamoDb.send(new ScanCommand(params));
+    return {
+      statusCode: 200,
+      body: JSON.stringify(data.Items.map(item => unmarshall(item)))
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error getting users"
+    };
+  }
+}
+
 exports.handler = async (event, context) => {
   switch (event.requestContext.http.method) {
     case "GET":
-      return await getUser(event);
+      if (event.rawPath.endsWith('users')) {
+        return await getAllUsers(event);
+      } else {
+        return await getUser(event);
+      }
     case "POST":
       return await addUser(event);
     case "DELETE":
