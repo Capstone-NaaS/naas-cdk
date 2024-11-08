@@ -6,7 +6,6 @@ import { DynamoLoggingStack } from "./stacks/DynamoLoggingStack";
 import { WebSocketGWStack } from "./stacks/WebSocketGWStack";
 import { HttpGWStack } from "./stacks/HttpGWStack";
 import { SesStack } from "./stacks/SesStack";
-import { SqsStack } from "./stacks/SqsStack";
 
 // Define the stage
 export class NaasStage extends Stage {
@@ -14,7 +13,7 @@ export class NaasStage extends Stage {
     super(scope, id, props);
 
     // Add common stage
-    // this includes the dynamo log bucket
+    // this includes the dynamo log bucket and SQS
     const commonStack = new CommonStack(this, `CommonStack-${this.stageName}`, {
       env: props?.env,
       stageName: this.stageName,
@@ -58,12 +57,6 @@ export class NaasStage extends Stage {
       stageName: this.stageName,
       dynamoLoggingStack,
       commonStack,
-    });
-
-    // Add SQS to stage
-    new SqsStack(this, `SqsStack-${this.stageName}`, {
-      env: props?.env,
-      stageName: this.stageName,
     });
   }
 }

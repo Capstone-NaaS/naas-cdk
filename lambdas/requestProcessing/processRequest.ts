@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { Handler } from "aws-lambda";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+const db = new DynamoDBClient();
+const dynamoDb = DynamoDBDocumentClient.from(db);
 
 const sqs = new SQSClient();
 
@@ -41,12 +45,52 @@ function createRequest(
   }
 }
 
+async function verifyUser(user_id: string) {
+  const params = {
+    TableName: process.env.USER_ATTRIBUTES_TABLE,
+    Key: {
+      id: user_id,
+    },
+  };
+  try {
+    const data = await dynamoDb.send(new GetCommand(params));
+    if (data.Item) {
+      return {
+        statusCode: 200,
+      };
+    } else {
+      return {
+        statusCode: 400,
+        body: "User does not exist",
+      };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error getting user",
+    };
+  }
+}
+
 export const handler: Handler = async (event) => {
   let response;
   const responseBody: Object[] = [];
 
   try {
     const body = JSON.parse(event.body);
+
+    // verify user exists in our attributes table
+    try {
+      let userExists = await verifyUser(body.user_id);
+      if (userExists.statusCode === 200) {
+        console.log("User verified");
+      } else {
+        throw new Error("User does not exist");
+      }
+    } catch (error) {
+      console.error(error);
+      throw new Error("Error fetching user");
+    }
 
     // for each object in channel, parse to prepare for queue
     await Promise.all(
@@ -61,12 +105,10 @@ export const handler: Handler = async (event) => {
         const queueParams: {
           QueueUrl: string;
           MessageBody: string;
-          MessageGroupId: string;
         } = {
           QueueUrl:
-            "https://sqs.us-west-1.amazonaws.com/412381737648/LogQueue.fifo",
+            "https://sqs.us-west-1.amazonaws.com/412381737648/ProcessQueue",
           MessageBody: JSON.stringify(notificationRequest),
-          MessageGroupId: "default-group",
         };
 
         try {

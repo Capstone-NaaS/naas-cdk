@@ -1,10 +1,11 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { aws_lambda, aws_lambda_nodejs, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 import { NotificationLogDb } from "../constructs/NotificationLogDb";
 import { UserAttributesDb } from "../constructs/UserAttributesDb";
 import { UserPreferencesDdb } from "../constructs/UserPreferencesDdb";
 import { randomUUID } from "node:crypto";
+import path = require("path");
 
 interface CommonStackProps extends StackProps {
   stageName: string;
@@ -45,7 +46,7 @@ export class CommonStack extends Stack {
     );
     this.notificationLogsDB = notificationLogsDB;
 
-    // create dynamo db table to hold notification logs
+    // create dynamo db table to hold user preferences logs
     const userPreferencesDdb = new UserPreferencesDdb(
       this,
       `UserPreferencesTable-${stageName}`,
@@ -64,5 +65,28 @@ export class CommonStack extends Stack {
       }
     );
     this.userAttributesDB = userAttributesDB;
+
+    // create lambda to process notification requests from HTTP Gateway
+    const processRequest = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `processRequest-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/requestProcessing/processRequest.ts"
+        ),
+        environment: {
+          USER_ATTRIBUTES_TABLE: userAttributesDB.UserAttributesTable.tableName,
+        },
+      }
+    );
+
+    // grant permission to processRequest lambda to send message to SQS
+    //TODO
+
+    // grant permission to processRequest to access user attributes table
+    userAttributesDB.UserAttributesTable.grantReadData(processRequest);
   }
 }
