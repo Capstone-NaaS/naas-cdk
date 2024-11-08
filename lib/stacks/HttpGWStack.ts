@@ -97,6 +97,12 @@ export class HttpGWStack extends Stack {
     // create http api gateway
     const httpApi = new aws_apigatewayv2.HttpApi(this, `HttpApi-${stageName}`, {
       apiName: `HttpApi-${stageName}`,
+      corsPreflight: {
+        allowHeaders: ["Authorization"],
+        allowMethods: [aws_apigatewayv2.CorsHttpMethod.ANY],
+        allowOrigins: ["*"],
+        maxAge: Duration.days(10),
+      },
     });
 
     // creating log group for access logs
