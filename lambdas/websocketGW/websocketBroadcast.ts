@@ -20,18 +20,7 @@ const apiGateway = new ApiGatewayManagementApi({
 });
 
 async function sendLog(logEvent: LogEvent) {
-  try {
-    const command = new InvokeCommand({
-      FunctionName: process.env.DYNAMO_LOGGER_FN,
-      InvocationType: "Event",
-      Payload: JSON.stringify(logEvent),
-    });
-    const response = await lambdaClient.send(command);
-    return "Log sent to the dynamo logger";
-  } catch (error) {
-    console.log("Error invoking the Lambda function: ", error);
-    return error;
-  }
+  console.log("Log sent to SQS");
 }
 
 interface EventType {
@@ -46,40 +35,12 @@ export const handler: Handler = async (event: EventType) => {
 
   // add log to indicate we added this to list of active notifications
   const body = {
-    status: "notification queued",
+    status: "Notification queued for sending.",
     user_id,
     message: notification.message,
     notification_id: notification.notification_id,
     channel: "in-app",
   };
-
-  // query user preferences table to see if user wants to receive in-app notifiations
-  const getCommand = new GetCommand({
-    TableName: process.env.USER_PREFERENCES_TABLE,
-    Key: { user_id },
-    ProjectionExpression: "in_app",
-  });
-  const response = await docClient.send(getCommand);
-  const inAppPref = response.Item?.in_app;
-  if (!inAppPref) {
-    body.status = "Not sent. User pref turned off.";
-
-    const log = {
-      requestContext: {
-        http: {
-          method: "POST",
-        },
-      },
-      body: JSON.stringify(body),
-    };
-
-    await sendLog(log);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "User preference turned off." }),
-    };
-  }
 
   try {
     if (connectionId === undefined) {
@@ -101,8 +62,6 @@ export const handler: Handler = async (event: EventType) => {
           ? queryConnIdResult.Items[0].connectionId
           : null;
     }
-
-    body.status = "Notification queued.";
 
     const log = {
       requestContext: {
