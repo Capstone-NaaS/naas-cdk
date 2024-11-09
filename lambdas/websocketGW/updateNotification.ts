@@ -39,18 +39,7 @@ async function getConnectionId(user_id: string) {
 }
 
 async function sendLog(logEvent: LogEvent) {
-  try {
-    const command = new InvokeCommand({
-      FunctionName: process.env.DYNAMO_LOGGER_FN,
-      InvocationType: "Event",
-      Payload: JSON.stringify(logEvent),
-    });
-    const response = await lambdaClient.send(command);
-    return "Log sent to the dynamo logger";
-  } catch (error) {
-    console.log("Error invoking the Lambda function: ", error);
-    return error;
-  }
+  console.log("Log sent to SQS");
 }
 
 export const handler: Handler = async (event) => {

@@ -47,6 +47,8 @@ export class DynamoLoggingStack extends Stack {
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
           SEND_NOTIFICATION: commonStack.SAVE_NOTIFICATION_FN,
           EMAIL_NOTIFICATION: sendEmail.functionName,
+          USER_PREFERENCES_TABLE:
+            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
         functionName: commonStack.DYNAMO_LOGGER_FN,
       }

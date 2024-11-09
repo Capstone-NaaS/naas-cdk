@@ -1,11 +1,7 @@
 import { Handler } from "aws-lambda";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
 import { NotificationLogType } from "../types";
@@ -18,14 +14,6 @@ export const handler: Handler = async (log: NotificationLogType) => {
   const { log_id, channel, ttl, ...notification } = log;
   const user_id = notification.user_id;
 
-  const getCommand = new GetCommand({
-    TableName: process.env.USER_PREFERENCES_TABLE,
-    Key: { user_id },
-    ProjectionExpression: "in_app",
-  });
-  const response = await docClient.send(getCommand);
-  const inAppPref = response.Item?.in_app;
-
   try {
     const saveNotifParams = {
       TableName: process.env.ACTIVE_NOTIF_TABLE,
@@ -36,11 +24,9 @@ export const handler: Handler = async (log: NotificationLogType) => {
       },
     };
 
-    if (inAppPref) {
-      // Save received notification to table of active notifications
-      const saveNotifCommand = new PutCommand(saveNotifParams);
-      const dbResponse = await docClient.send(saveNotifCommand);
-    }
+    // Save received notification to table of active notifications
+    const saveNotifCommand = new PutCommand(saveNotifParams);
+    await docClient.send(saveNotifCommand);
 
     // broadcast to connected client
     // this next lambda determines whether the user is currently connected
