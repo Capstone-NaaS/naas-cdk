@@ -44,7 +44,7 @@ async function sendLog(log: InAppLog) {
     QueueUrl: string;
     MessageBody: string;
   } = {
-    QueueUrl: "https://sqs.us-west-1.amazonaws.com/412381737648/ProcessQueue",
+    QueueUrl: process.env.LOG_QUEUE!,
     MessageBody: JSON.stringify(log),
   };
 

@@ -25,6 +25,7 @@ export class SesStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
+    const loggerQueue = props.commonStack.loggerQueue;
 
     // create email sending Lambda
     const sendEmail = new aws_lambda_nodejs.NodejsFunction(
@@ -36,7 +37,7 @@ export class SesStack extends Stack {
         entry: path.join(__dirname, "../../lambdas/email/sendEmail.ts"),
         environment: {
           SENDER_EMAIL: process.env.SENDER_EMAIL!,
-          LOG_QUEUE: "name of log queue",
+          LOG_QUEUE: loggerQueue.queueUrl,
         },
       }
     );
@@ -49,6 +50,9 @@ export class SesStack extends Stack {
         resources: ["*"],
       })
     );
+
+    // grant permission to sendEmail lambda to send message to SQS
+    loggerQueue.grantSendMessages(sendEmail);
 
     new aws_ses.CfnEmailIdentity(this, `SenderEmailIdentity-${stageName}`, {
       emailIdentity: process.env.SENDER_EMAIL!,

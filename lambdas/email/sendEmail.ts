@@ -9,11 +9,8 @@ const sqs = new SQSClient();
 
 async function sendLog(log: EmailLog) {
   // push to queue
-  const queueParams: {
-    QueueUrl: string;
-    MessageBody: string;
-  } = {
-    QueueUrl: "https://sqs.us-west-1.amazonaws.com/412381737648/ProcessQueue",
+  const queueParams = {
+    QueueUrl: process.env.QUEUE_URL,
     MessageBody: JSON.stringify(log),
   };
 

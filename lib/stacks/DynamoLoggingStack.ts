@@ -1,4 +1,11 @@
-import { Stack, StackProps, aws_lambda_nodejs, aws_lambda } from "aws-cdk-lib";
+import {
+  Stack,
+  StackProps,
+  aws_lambda_nodejs,
+  aws_lambda,
+  aws_lambda_event_sources,
+  Duration,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
 
@@ -24,6 +31,7 @@ export class DynamoLoggingStack extends Stack {
     const commonStack = props.commonStack;
     const websocketGwStack = props.websocketGwStack;
     const sendEmail = props.sesStack.sendEmail;
+    const loggerQueue = props.commonStack.loggerQueue;
 
     // create dynamoLogger lambda
     const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
@@ -43,7 +51,6 @@ export class DynamoLoggingStack extends Stack {
           EMAIL_NOTIFICATION: sendEmail.functionName,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
-          LOG_QUEUE: "name of log queue",
         },
       }
     );
@@ -58,6 +65,16 @@ export class DynamoLoggingStack extends Stack {
     );
 
     sendEmail.grantInvoke(dynamoLogger);
+
+    dynamoLogger.addEventSource(
+      new aws_lambda_event_sources.SqsEventSource(loggerQueue, {
+        maxBatchingWindow: Duration.seconds(2),
+        batchSize: 100,
+        maxConcurrency: 10,
+      })
+    );
+
+    loggerQueue.grantConsumeMessages(dynamoLogger);
 
     websocketGwStack.saveActiveNotification.grantInvoke(dynamoLogger);
   }
