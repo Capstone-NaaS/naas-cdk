@@ -1,10 +1,4 @@
-import {
-  Stack,
-  StackProps,
-  aws_lambda_nodejs,
-  aws_lambda,
-  aws_iam,
-} from "aws-cdk-lib";
+import { Stack, StackProps, aws_lambda_nodejs, aws_lambda } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
 
@@ -49,8 +43,8 @@ export class DynamoLoggingStack extends Stack {
           EMAIL_NOTIFICATION: sendEmail.functionName,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          LOG_QUEUE: "name of log queue",
         },
-        functionName: commonStack.DYNAMO_LOGGER_FN,
       }
     );
     this.dynamoLogger = dynamoLogger;
@@ -59,16 +53,12 @@ export class DynamoLoggingStack extends Stack {
     commonStack.notificationLogsDB.NotificationLogTable.grantReadWriteData(
       dynamoLogger
     );
+    commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
+      dynamoLogger
+    );
 
-    dynamoLogger.grantInvoke(websocketGwStack.websocketBroadcast);
-    dynamoLogger.grantInvoke(websocketGwStack.updateNotification);
-    dynamoLogger.grantInvoke(websocketGwStack.sendInitialData);
+    sendEmail.grantInvoke(dynamoLogger);
 
-    dynamoLogger.addToRolePolicy(
-      new aws_iam.PolicyStatement({
-        actions: ["lambda:InvokeFunction"],
-        resources: [`arn:aws:lambda:${this.region}:${this.account}:function:*`],
-      })
-    ); // this gives dynamoLogger the permission to invoke any lambda
+    websocketGwStack.saveActiveNotification.grantInvoke(dynamoLogger);
   }
 }

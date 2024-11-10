@@ -103,9 +103,7 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
-          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          LOG_QUEUE: "name of log queue",
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
         },
         timeout: Duration.seconds(100),
@@ -158,8 +156,6 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
         },
         timeout: Duration.seconds(100),
@@ -186,7 +182,7 @@ export class WebSocketGWStack extends Stack {
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
-          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
+          LOG_QUEUE: "name of log queue",
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
         },
         timeout: Duration.seconds(100),

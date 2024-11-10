@@ -16,7 +16,7 @@ export class CommonStack extends Stack {
   public readonly notificationLogsDB: NotificationLogDb;
   public readonly userPreferencesDdb: UserPreferencesDdb;
   public readonly userAttributesDB: UserAttributesDb;
-  public readonly DYNAMO_LOGGER_FN: string;
+  public readonly processRequest: aws_lambda_nodejs.NodejsFunction;
   public readonly SAVE_NOTIFICATION_FN: string;
 
   constructor(scope: Construct, id: string, props: CommonStackProps) {
@@ -29,12 +29,6 @@ export class CommonStack extends Stack {
       6
     )}`;
     this.SAVE_NOTIFICATION_FN = SAVE_NOTIFICATION_FN;
-
-    const DYNAMO_LOGGER_FN = `${stageName}-DynamoLoggingSt-dynamoLogger-${randomUUID().slice(
-      0,
-      6
-    )}`;
-    this.DYNAMO_LOGGER_FN = DYNAMO_LOGGER_FN;
 
     // create dynamo db table to hold notification logs
     const notificationLogsDB = new NotificationLogDb(
@@ -79,12 +73,14 @@ export class CommonStack extends Stack {
         ),
         environment: {
           USER_ATTRIBUTES_TABLE: userAttributesDB.UserAttributesTable.tableName,
+          LOG_QUEUE: "name of log queue",
         },
       }
     );
+    this.processRequest = processRequest;
 
     // grant permission to processRequest lambda to send message to SQS
-    //TODO
+    // TODO
 
     // grant permission to processRequest to access user attributes table
     userAttributesDB.UserAttributesTable.grantReadData(processRequest);

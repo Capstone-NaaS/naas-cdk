@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { Handler } from "aws-lambda";
+import { SQSEvent, SQSBatchResponse, SQSBatchItemFailure } from "aws-lambda";
 
 import { NotificationLogType } from "../types";
 
@@ -105,18 +105,10 @@ async function addLog(log: NotificationLogType) {
   }
 }
 
-export const handler: Handler = async (event) => {
-  const batchItemFailures = [];
-  let errorOccurred = false;
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
+  const batchItemFailures: SQSBatchItemFailure[] = [];
 
-  for (let ind = 0; ind < event.Records.length; ind += 1) {
-    const record = event.Records[ind];
-
-    if (errorOccurred) {
-      batchItemFailures.push({ itemIdentifier: record.messageId });
-      continue;
-    }
-
+  for (let record of event.Records) {
     try {
       const body = JSON.parse(record.body);
       const log: NotificationLogType = createLog(
@@ -152,7 +144,6 @@ export const handler: Handler = async (event) => {
     } catch (error) {
       console.error(error);
       batchItemFailures.push({ itemIdentifier: record.messageId });
-      errorOccurred = true;
     }
   }
 

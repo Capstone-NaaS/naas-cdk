@@ -1,3 +1,5 @@
+import { StreamProcessingStartSelector } from "aws-sdk/clients/rekognition";
+
 export interface NotificationType {
   notification_id: string;
   user_id: string;
@@ -25,11 +27,24 @@ export interface NotificationLogType {
   ttl: number;
 }
 
-export interface LogEvent {
-  requestContext: {
-    http: {
-      method: string;
-    };
+export interface InAppLog {
+  status?: string;
+  notification_id: string;
+  user_id: string;
+  channel: "in-app";
+  body: {
+    message: string;
   };
-  body: string;
+}
+
+export interface EmailLog {
+  status?: string;
+  notification_id: string;
+  user_id: string;
+  channel: "email";
+  body: {
+    message: string;
+    subject: string;
+    receiver_email: string;
+  };
 }

@@ -9,6 +9,8 @@ import {
 } from "aws-cdk-lib";
 import { CommonStack } from "./CommonStack";
 import * as path from "path";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 interface SesStackProps extends StackProps {
   stageName: string;
@@ -33,8 +35,8 @@ export class SesStack extends Stack {
         handler: "handler",
         entry: path.join(__dirname, "../../lambdas/email/sendEmail.ts"),
         environment: {
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          SENDER_EMAIL: process.env.SENDER_EMAIL!,
+          LOG_QUEUE: "name of log queue",
         },
       }
     );
