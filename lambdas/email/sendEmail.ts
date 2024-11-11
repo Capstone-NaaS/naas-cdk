@@ -2,7 +2,6 @@ import { Handler } from "aws-lambda";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { EmailLog, NotificationLogType } from "../types";
-import { log } from "console";
 
 const ses = new SESClient();
 const sqs = new SQSClient();
@@ -10,12 +9,13 @@ const sqs = new SQSClient();
 async function sendLog(log: EmailLog) {
   // push to queue
   const queueParams = {
-    QueueUrl: process.env.QUEUE_URL,
+    QueueUrl: process.env.LOG_QUEUE,
     MessageBody: JSON.stringify(log),
   };
 
   const command = new SendMessageCommand(queueParams);
-  return await sqs.send(command);
+  const sqsResponse = await sqs.send(command);
+  return;
 }
 
 export const handler: Handler = async (log: NotificationLogType) => {

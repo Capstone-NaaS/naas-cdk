@@ -8,10 +8,10 @@ const dynamoDb = DynamoDBDocumentClient.from(db);
 
 const sqs = new SQSClient();
 
-function createRequest(
+async function createRequest(
   user_id: string,
   channel_type: string,
-  channel_body: { message: string; receiver_email?: string; subject?: string }
+  channel_body: { message: string; subject?: string }
 ) {
   // required arguments to begin processing request
   if (!user_id || !channel_type || !channel_body) {
@@ -34,10 +34,11 @@ function createRequest(
       },
     };
   } else if (channel_type === "email") {
+    const user_email = await fetchUserAttribute(user_id);
     return {
       ...base_log,
       body: {
-        receiver_email: channel_body.receiver_email,
+        receiver_email: user_email,
         subject: channel_body.subject,
         message: channel_body.message,
       },
@@ -72,6 +73,31 @@ async function verifyUser(user_id: string) {
   }
 }
 
+async function fetchUserAttribute(user_id: string) {
+  const params = {
+    TableName: process.env.USER_ATTRIBUTES_TABLE,
+    Key: {
+      id: user_id,
+    },
+  };
+  try {
+    const data = await dynamoDb.send(new GetCommand(params));
+    if (data.Item) {
+      return data.Item.email;
+    } else {
+      return {
+        statusCode: 400,
+        body: "User attribute does not exists",
+      };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error getting user attribute",
+    };
+  }
+}
+
 export const handler: Handler = async (event) => {
   let response;
   const responseBody: Object[] = [];
@@ -95,7 +121,7 @@ export const handler: Handler = async (event) => {
     // for each object in channel, parse to prepare for queue
     await Promise.all(
       Object.keys(body.channels).map(async (channel) => {
-        const notificationRequest = createRequest(
+        const notificationRequest = await createRequest(
           body.user_id,
           channel,
           body.channels[channel]
@@ -117,7 +143,7 @@ export const handler: Handler = async (event) => {
 
         // push notification_id to responseBody for each channel
         responseBody.push({
-          channel: channel,
+          channel,
           notification_id: notificationRequest?.notification_id,
         });
       })
