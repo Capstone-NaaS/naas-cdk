@@ -55,6 +55,8 @@ export class HttpGWStack extends Stack {
         ),
         environment: {
           USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,
+          USERPREFS:
+            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
       }
     );
@@ -89,8 +91,12 @@ export class HttpGWStack extends Stack {
         }
       );
 
-    // give lambda permission to access dynamo
+    // give userFunctions permission to access userAttributes and userPreferences
     commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      userFunctions
+    );
+
+    commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadWriteData(
       userFunctions
     );
 
