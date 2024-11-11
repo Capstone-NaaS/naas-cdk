@@ -10,8 +10,41 @@ const {
 const db = new DynamoDBClient();
 const dynamoDb = DynamoDBDocumentClient.from(db);
 
+const addUserPreferences = async (user_id) => {
+  const putParams = {
+    TableName: process.env.USERPREFS,
+    Item: {
+      user_id,
+      email: true,
+      in_app: true,
+    },
+  };
+
+  try {
+    const response = await dynamoDb.send(new PutCommand(putParams));
+    const responseStatus = response.$metadata.httpStatusCode;
+
+    if (responseStatus === 200) {
+      return {
+        statusCode: 200,
+        body: "User preferences added",
+      };
+    } else {
+      return {
+        statusCode: responseStatus,
+        body: "Error adding user preferences",
+      };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error adding user preferences",
+    };
+  }
+};
+
 const addUser = async (event) => {
-  const { id, name, email, userHash } = JSON.parse(event.body);
+  const { id, name, email } = JSON.parse(event.body);
 
   const putParams = {
     TableName: process.env.USERDB,
@@ -19,7 +52,7 @@ const addUser = async (event) => {
       id,
       name,
       email,
-      userHash,
+      created_at: new Date().toISOString(),
     },
   };
 
@@ -42,14 +75,24 @@ const addUser = async (event) => {
       const responseStatus = response.$metadata.httpStatusCode;
 
       if (responseStatus === 200) {
-        return {
-          statusCode: 200,
-          body: "User added",
-        };
+        const prefResponse = await addUserPreferences(id);
+        const prefResponseStatus = prefResponse.statusCode;
+
+        if (prefResponseStatus === 200) {
+          return {
+            statusCode: 200,
+            body: "User added",
+          };
+        } else {
+          return {
+            statusCode: responseStatus,
+            body: "Error adding user preferences",
+          };
+        }
       } else {
         return {
           statusCode: responseStatus,
-          body: "Error",
+          body: "Error creating user",
         };
       }
     }
@@ -57,6 +100,37 @@ const addUser = async (event) => {
     return {
       statusCode: 500,
       body: "Error creating user",
+    };
+  }
+};
+
+const deleteUserPreferences = async (user_id) => {
+  const params = {
+    TableName: process.env.USERPREFS,
+    Key: {
+      user_id,
+    },
+  };
+
+  try {
+    const response = await dynamoDb.send(new DeleteCommand(params));
+    const responseStatus = response.$metadata.httpStatusCode;
+
+    if (responseStatus === 200) {
+      return {
+        statusCode: 200,
+        body: "User preferences deleted",
+      };
+    } else {
+      return {
+        statusCode: 500,
+        body: "Error deleting user preferences",
+      };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error deleting user preferences",
     };
   }
 };
@@ -78,14 +152,24 @@ const deleteUser = async (event) => {
       const responseStatus = response.$metadata.httpStatusCode;
 
       if (responseStatus === 200) {
-        return {
-          statusCode: 200,
-          body: "User deleted",
-        };
+        const prefResponse = await deleteUserPreferences(id);
+        const prefResponseStatus = prefResponse.statusCode;
+
+        if (prefResponseStatus === 200) {
+          return {
+            statusCode: 200,
+            body: "User deleted",
+          };
+        } else {
+          return {
+            statusCode: responseStatus,
+            body: "Error deleting user preferences",
+          };
+        }
       } else {
         return {
           statusCode: responseStatus,
-          body: "Error",
+          body: "Error deleting user",
         };
       }
     } else {
