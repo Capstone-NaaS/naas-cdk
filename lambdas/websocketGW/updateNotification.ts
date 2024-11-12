@@ -7,13 +7,13 @@ import {
   DeleteCommand,
   QueryCommandInput,
 } from "@aws-sdk/lib-dynamodb";
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { UpdatedNotificationType, LogEvent } from "../types";
+import { UpdatedNotificationType, InAppLog } from "../types";
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const lambdaClient = new LambdaClient();
+const sqs = new SQSClient();
 
 const apiGateway = new ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT,
@@ -38,19 +38,18 @@ async function getConnectionId(user_id: string) {
     : null;
 }
 
-async function sendLog(logEvent: LogEvent) {
-  try {
-    const command = new InvokeCommand({
-      FunctionName: process.env.DYNAMO_LOGGER_FN,
-      InvocationType: "Event",
-      Payload: JSON.stringify(logEvent),
-    });
-    const response = await lambdaClient.send(command);
-    return "Log sent to the dynamo logger";
-  } catch (error) {
-    console.log("Error invoking the Lambda function: ", error);
-    return error;
-  }
+async function sendLog(log: InAppLog) {
+  // push to queue
+  const queueParams: {
+    QueueUrl: string;
+    MessageBody: string;
+  } = {
+    QueueUrl: process.env.LOG_QUEUE!,
+    MessageBody: JSON.stringify(log),
+  };
+
+  const command = new SendMessageCommand(queueParams);
+  return await sqs.send(command);
 }
 
 export const handler: Handler = async (event) => {
@@ -165,20 +164,14 @@ export const handler: Handler = async (event) => {
         break;
     }
 
-    const body = {
+    const log: InAppLog = {
       status,
-      user_id,
-      message,
       notification_id,
-    };
-
-    const log = {
-      requestContext: {
-        http: {
-          method: "POST",
-        },
+      user_id,
+      channel: "in-app",
+      body: {
+        message,
       },
-      body: JSON.stringify(body),
     };
 
     await sendLog(log);

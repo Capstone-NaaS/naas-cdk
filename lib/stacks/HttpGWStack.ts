@@ -36,11 +36,7 @@ export class HttpGWStack extends Stack {
     super(scope, id, props);
 
     const stageName = props.stageName || "defaultStage";
-    const dynamoLoggingStack = props.dynamoLoggingStack;
     const commonStack = props.commonStack;
-
-    // get logging lambda from dynamo logging stack
-    const dynamoLogger = dynamoLoggingStack.dynamoLogger;
 
     // create userFunctions lambda
     const userFunctions = new aws_lambda_nodejs.NodejsFunction(
@@ -150,22 +146,8 @@ export class HttpGWStack extends Stack {
       path: "/notification",
       methods: [aws_apigatewayv2.HttpMethod.POST],
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
-        "PostRequestToLogNotificationThenBroadcast",
-        dynamoLogger,
-        {
-          payloadFormatVersion:
-            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
-        }
-      ),
-      authorizer: lambdaAuthorizer,
-    });
-
-    httpApi.addRoutes({
-      path: "/notification-logs",
-      methods: [aws_apigatewayv2.HttpMethod.GET],
-      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
-        "GetRequestForLNotificationLogs",
-        dynamoLogger,
+        "ProcessIncomingNotificationRequest",
+        commonStack.processRequest,
         {
           payloadFormatVersion:
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,

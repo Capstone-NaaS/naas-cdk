@@ -1,4 +1,4 @@
-import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -6,8 +6,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { Handler } from "aws-lambda";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { SQSEvent, SQSBatchResponse, SQSBatchItemFailure } from "aws-lambda";
 
 import { NotificationLogType } from "../types";
 
@@ -15,8 +14,18 @@ const lambdaClient = new LambdaClient();
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 
-// pass notification to lambda for  in-app notification
-async function sendNotification(log: NotificationLogType) {
+async function getUserPreference(user_id: string, channel: string) {
+  const getCommand = new GetCommand({
+    TableName: process.env.USER_PREFERENCES_TABLE,
+    Key: { user_id },
+    ProjectionExpression: channel,
+  });
+  const response = await docClient.send(getCommand);
+  return response.Item![channel];
+}
+
+// pass notification to lambda for in-app notification
+async function inAppNotification(log: NotificationLogType) {
   try {
     const command = new InvokeCommand({
       FunctionName: process.env.SEND_NOTIFICATION,
@@ -52,24 +61,32 @@ function createLog(
   user_id: string,
   message: string,
   channel: string,
-  notification_id: string
+  notification_id: string,
+  receiver_email?: string,
+  subject?: string
 ): NotificationLogType {
   if (!notification_id) {
     notification_id = randomUUID();
   }
 
   const expirationTime = Math.floor(Date.now() / 1000) + 2592000; // 30 days from now in Unix epoch
-
-  return {
+  const log: NotificationLogType = {
     log_id: randomUUID(),
-    notification_id,
-    user_id,
     created_at: new Date().toISOString(),
-    status: status || "notification request received", //notification created, notification sent, notification recieved
-    channel, // in-app, email, slack
-    message,
     ttl: expirationTime,
+    user_id,
+    status, //notification created, notification sent, notification recieved
+    message,
+    channel, // in-app, email, slack
+    notification_id,
   };
+
+  if (channel === "email") {
+    log.receiver_email = receiver_email;
+    log.subject = subject;
+  }
+
+  return log;
 }
 
 async function addLog(log: NotificationLogType) {
@@ -88,101 +105,47 @@ async function addLog(log: NotificationLogType) {
   }
 }
 
-async function getLogs() {
-  const params = {
-    TableName: process.env.NOTIFICATION_LOG_TABLE,
-  };
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
+  const batchItemFailures: SQSBatchItemFailure[] = [];
 
-  try {
-    const data = await dbClient.send(new ScanCommand(params));
-
-    if (!data.Items) {
-      return [];
-    }
-    return data.Items.map((item) => unmarshall(item));
-  } catch (error) {
-    console.error(error);
-    return error;
-  }
-}
-
-async function getLog(userId: string, createdAt: string) {
-  const params = {
-    TableName: process.env.NOTIFICATION_LOG_TABLE,
-    Key: {
-      // use partition key and sort key in query
-      user_id: userId,
-      created_at: createdAt,
-    },
-  };
-
-  const result = await dbClient.send(new GetCommand(params));
-  return result.Item;
-}
-
-export const handler: Handler = async (event) => {
-  const requestMethod = event.requestContext.http.method;
-  let responseData;
-  let notificationsLogged;
-
-  if (requestMethod === "GET") {
-    responseData = await getLogs();
-  } else if (requestMethod === "POST") {
-    const body = JSON.parse(event.body);
-    // if this is the initial notification request:
-    if (!body.status) {
-      const CHANNELS = ["in-app", "email"];
-
-      // for each channel, create a log and send to notification_logs db
-      notificationsLogged = await Promise.all(
-        CHANNELS.map(async (channel) => {
-          const log = createLog(
-            body.status,
-            body.user_id,
-            body.message,
-            `${channel}`,
-            body.notification_id
-          );
-          const addedLog = await addLog(log);
-          if (!addedLog) {
-            console.error(`Failed to add log for channel: ${channel}`);
-            return null; // Indicate failure
-          } else {
-            console.log(
-              `Successfully added log for channel ${channel}:`,
-              addedLog
-            );
-          }
-
-          // send to a lambda depending on the channel
-          if (channel === "in-app") {
-            await sendNotification(log);
-          } else if (channel === "email") {
-            await emailNotification(log);
-          }
-
-          // for each channel, return log info
-          const response = await getLog(log.user_id, log.created_at);
-          return response;
-        })
-      );
-    } else {
-      // if this is for an updated log:
-      const log = createLog(
-        body.status,
+  for (let record of event.Records) {
+    try {
+      const body = JSON.parse(record.body);
+      const log: NotificationLogType = createLog(
+        body.status ? body.status : "Notification request received.",
         body.user_id,
-        body.message,
+        body.body.message,
         body.channel,
-        body.notification_id
+        body.notification_id,
+        body.body.receiver_email,
+        body.body.subject
       );
       await addLog(log);
+
+      if (!body.status) {
+        const preference = await getUserPreference(body.user_id, body.channel);
+        if (preference && body.channel === "in_app") {
+          await inAppNotification(log);
+        } else if (preference && body.channel === "email") {
+          await emailNotification(log);
+        } else if (!preference) {
+          const log: NotificationLogType = createLog(
+            "Notification not sent - channel disabled by user.",
+            body.user_id,
+            body.body.message,
+            body.channel,
+            body.notification_id,
+            body.body.receiver_email,
+            body.body.subject
+          );
+          await addLog(log);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }
 
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify(responseData || notificationsLogged),
-  };
-
-  return response;
+  return { batchItemFailures };
 };

@@ -9,6 +9,8 @@ import {
 } from "aws-cdk-lib";
 import { CommonStack } from "./CommonStack";
 import * as path from "path";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 interface SesStackProps extends StackProps {
   stageName: string;
@@ -23,6 +25,7 @@ export class SesStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
+    const loggerQueue = props.commonStack.loggerQueue;
 
     // create email sending Lambda
     const sendEmail = new aws_lambda_nodejs.NodejsFunction(
@@ -33,8 +36,8 @@ export class SesStack extends Stack {
         handler: "handler",
         entry: path.join(__dirname, "../../lambdas/email/sendEmail.ts"),
         environment: {
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          SENDER_EMAIL: process.env.SENDER_EMAIL!,
+          LOG_QUEUE: loggerQueue.queueUrl,
         },
       }
     );
@@ -47,6 +50,9 @@ export class SesStack extends Stack {
         resources: ["*"],
       })
     );
+
+    // grant permission to sendEmail lambda to send message to SQS
+    loggerQueue.grantSendMessages(sendEmail);
 
     new aws_ses.CfnEmailIdentity(this, `SenderEmailIdentity-${stageName}`, {
       emailIdentity: process.env.SENDER_EMAIL!,

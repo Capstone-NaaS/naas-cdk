@@ -13,7 +13,7 @@ export class NaasStage extends Stage {
     super(scope, id, props);
 
     // Add common stage
-    // this includes the dynamo log bucket
+    // this includes the dynamo log bucket and SQS
     const commonStack = new CommonStack(this, `CommonStack-${this.stageName}`, {
       env: props?.env,
       stageName: this.stageName,

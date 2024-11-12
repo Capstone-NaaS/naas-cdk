@@ -16,7 +16,7 @@ const addUserPreferences = async (user_id) => {
     Item: {
       user_id,
       email: true,
-      in_app: true
+      in_app: true,
     },
   };
 
@@ -27,21 +27,21 @@ const addUserPreferences = async (user_id) => {
     if (responseStatus === 200) {
       return {
         statusCode: 200,
-        body: "User preferences added"
+        body: "User preferences added",
       };
     } else {
       return {
         statusCode: responseStatus,
-        body: "Error adding user preferences"
-      }
+        body: "Error adding user preferences",
+      };
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error adding user preferences"
+      body: "Error adding user preferences",
     };
   }
-}
+};
 
 const addUser = async (event) => {
   const { id, name, email } = JSON.parse(event.body);
@@ -68,7 +68,7 @@ const addUser = async (event) => {
     if (data.Item) {
       return {
         statusCode: 400,
-        body: "Could not add user: id already exists"
+        body: "Could not add user: id already exists",
       };
     } else {
       const response = await dynamoDb.send(new PutCommand(putParams));
@@ -81,28 +81,28 @@ const addUser = async (event) => {
         if (prefResponseStatus === 200) {
           return {
             statusCode: 200,
-            body: "User added"
+            body: "User added",
           };
         } else {
           return {
             statusCode: responseStatus,
-            body: "Error adding user preferences"
-          }
+            body: "Error adding user preferences",
+          };
         }
       } else {
         return {
           statusCode: responseStatus,
-          body: "Error creating user"
-        }
+          body: "Error creating user",
+        };
       }
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error creating user"
+      body: "Error creating user",
     };
   }
-}
+};
 
 const deleteUserPreferences = async (user_id) => {
   const params = {
@@ -119,21 +119,21 @@ const deleteUserPreferences = async (user_id) => {
     if (responseStatus === 200) {
       return {
         statusCode: 200,
-        body: "User preferences deleted"
+        body: "User preferences deleted",
       };
     } else {
       return {
         statusCode: 500,
-        body: "Error deleting user preferences"
+        body: "Error deleting user preferences",
       };
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error deleting user preferences"
+      body: "Error deleting user preferences",
     };
   }
-}
+};
 
 const deleteUser = async (event) => {
   const { id } = JSON.parse(event.body);
@@ -141,7 +141,7 @@ const deleteUser = async (event) => {
   const params = {
     TableName: process.env.USERDB,
     Key: {
-      id
+      id,
     },
   };
 
@@ -158,33 +158,33 @@ const deleteUser = async (event) => {
         if (prefResponseStatus === 200) {
           return {
             statusCode: 200,
-            body: "User deleted"
+            body: "User deleted",
           };
         } else {
           return {
             statusCode: responseStatus,
-            body: "Error deleting user preferences"
-          }
+            body: "Error deleting user preferences",
+          };
         }
       } else {
         return {
           statusCode: responseStatus,
-          body: "Error deleting user"
-        }
+          body: "Error deleting user",
+        };
       }
     } else {
       return {
         statusCode: 400,
-        body: "User does not exist"
+        body: "User does not exist",
       };
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error deleting user"
+      body: "Error deleting user",
     };
   }
-}
+};
 
 const editUser = async (event) => {
   const { id, name, email, userHash } = JSON.parse(event.body);
@@ -195,7 +195,7 @@ const editUser = async (event) => {
       id,
       name,
       email,
-      userHash
+      userHash,
     },
   };
 
@@ -206,22 +206,21 @@ const editUser = async (event) => {
     if (responseStatus === 200) {
       return {
         statusCode: 200,
-        body: "User edited"
+        body: "User edited",
       };
     } else {
       return {
         statusCode: responseStatus,
-        body: "Error"
-      }
+        body: "Error",
+      };
     }
-
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error creating user"
+      body: "Error creating user",
     };
   }
-}
+};
 
 const getUser = async (event) => {
   const id = event.pathParameters.userId;
@@ -238,21 +237,21 @@ const getUser = async (event) => {
     if (data.Item) {
       return {
         statusCode: 200,
-        body: JSON.stringify(data.Item)
+        body: JSON.stringify(data.Item),
       };
     } else {
       return {
         statusCode: 400,
-        body: "User does not exist"
+        body: "User does not exist",
       };
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error getting user"
+      body: "Error getting user",
     };
   }
-}
+};
 
 const getAllUsers = async (event) => {
   const params = {
@@ -263,20 +262,20 @@ const getAllUsers = async (event) => {
     const data = await dynamoDb.send(new ScanCommand(params));
     return {
       statusCode: 200,
-      body: JSON.stringify(data.Items.map(item => unmarshall(item)))
-    }
+      body: JSON.stringify(data.Items.map((item) => unmarshall(item))),
+    };
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error getting users"
+      body: "Error getting users",
     };
   }
-}
+};
 
 exports.handler = async (event, context) => {
   switch (event.requestContext.http.method) {
     case "GET":
-      if (event.rawPath.endsWith('users')) {
+      if (event.rawPath.endsWith("users")) {
         return await getAllUsers(event);
       } else {
         return await getUser(event);

@@ -3,7 +3,8 @@ import {
   StackProps,
   aws_lambda_nodejs,
   aws_lambda,
-  aws_iam,
+  aws_lambda_event_sources,
+  Duration,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
@@ -30,6 +31,7 @@ export class DynamoLoggingStack extends Stack {
     const commonStack = props.commonStack;
     const websocketGwStack = props.websocketGwStack;
     const sendEmail = props.sesStack.sendEmail;
+    const loggerQueue = props.commonStack.loggerQueue;
 
     // create dynamoLogger lambda
     const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
@@ -47,8 +49,9 @@ export class DynamoLoggingStack extends Stack {
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
           SEND_NOTIFICATION: commonStack.SAVE_NOTIFICATION_FN,
           EMAIL_NOTIFICATION: sendEmail.functionName,
+          USER_PREFERENCES_TABLE:
+            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
-        functionName: commonStack.DYNAMO_LOGGER_FN,
       }
     );
     this.dynamoLogger = dynamoLogger;
@@ -57,16 +60,22 @@ export class DynamoLoggingStack extends Stack {
     commonStack.notificationLogsDB.NotificationLogTable.grantReadWriteData(
       dynamoLogger
     );
+    commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
+      dynamoLogger
+    );
 
-    dynamoLogger.grantInvoke(websocketGwStack.websocketBroadcast);
-    dynamoLogger.grantInvoke(websocketGwStack.updateNotification);
-    dynamoLogger.grantInvoke(websocketGwStack.sendInitialData);
+    sendEmail.grantInvoke(dynamoLogger);
 
-    dynamoLogger.addToRolePolicy(
-      new aws_iam.PolicyStatement({
-        actions: ["lambda:InvokeFunction"],
-        resources: [`arn:aws:lambda:${this.region}:${this.account}:function:*`],
+    dynamoLogger.addEventSource(
+      new aws_lambda_event_sources.SqsEventSource(loggerQueue, {
+        maxBatchingWindow: Duration.seconds(2),
+        batchSize: 100,
+        maxConcurrency: 10,
       })
-    ); // this gives dynamoLogger the permission to invoke any lambda
+    );
+
+    loggerQueue.grantConsumeMessages(dynamoLogger);
+
+    websocketGwStack.saveActiveNotification.grantInvoke(dynamoLogger);
   }
 }

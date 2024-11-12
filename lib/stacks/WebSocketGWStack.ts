@@ -38,6 +38,7 @@ export class WebSocketGWStack extends Stack {
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
     const sendEmail = props.sesStack.sendEmail;
+    const loggerQueue = props.commonStack.loggerQueue;
 
     // create websocket gateway
     const wsapi = new aws_apigatewayv2.CfnApi(
@@ -103,9 +104,7 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
-          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          LOG_QUEUE: loggerQueue.queueUrl,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
         },
         timeout: Duration.seconds(100),
@@ -158,8 +157,6 @@ export class WebSocketGWStack extends Stack {
         },
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
-          USER_PREFERENCES_TABLE:
-            commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
         },
         timeout: Duration.seconds(100),
@@ -186,7 +183,7 @@ export class WebSocketGWStack extends Stack {
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
-          DYNAMO_LOGGER_FN: commonStack.DYNAMO_LOGGER_FN,
+          LOG_QUEUE: loggerQueue.queueUrl,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
         },
         timeout: Duration.seconds(100),
@@ -499,6 +496,10 @@ export class WebSocketGWStack extends Stack {
     // permission for lambdas to call other lambdas
     websocketBroadcast.grantInvoke(saveActiveNotification);
     websocketBroadcast.grantInvoke(websocketConnect);
+
+    // grant permission to updateNotification and websocketBroadcast lambda to send message to SQS
+    loggerQueue.grantSendMessages(updateNotification);
+    loggerQueue.grantSendMessages(websocketBroadcast);
 
     // creating log group for access logs
     const logGroup = new aws_logs.LogGroup(this, "WSGatewayAccessLogs", {
