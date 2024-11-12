@@ -47,7 +47,7 @@ export class HttpGWStack extends Stack {
         handler: "handler",
         entry: path.join(
           __dirname,
-          "../../lambdas/userAttributes/userFunctions.js"
+          "../../lambdas/userAttributes/userFunctions.ts"
         ),
         environment: {
           USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,

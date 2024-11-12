@@ -1,16 +1,17 @@
-const { ScanCommand, DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { unmarshall } = require("@aws-sdk/util-dynamodb");
-const {
+import { ScanCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import {
   DynamoDBDocumentClient,
   PutCommand,
   GetCommand,
-  UpdateCommand,
   DeleteCommand,
-} = require("@aws-sdk/lib-dynamodb");
+} from "@aws-sdk/lib-dynamodb";
+import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
+
 const db = new DynamoDBClient();
 const dynamoDb = DynamoDBDocumentClient.from(db);
 
-const addUserPreferences = async (user_id) => {
+const addUserPreferences = async (user_id: string) => {
   const putParams = {
     TableName: process.env.USERPREFS,
     Item: {
@@ -43,8 +44,10 @@ const addUserPreferences = async (user_id) => {
   }
 };
 
-const addUser = async (event) => {
-  const { id, name, email } = JSON.parse(event.body);
+const addUser = async (
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> => {
+  const { id, name, email } = JSON.parse(event.body!);
 
   const putParams = {
     TableName: process.env.USERDB,
@@ -104,7 +107,7 @@ const addUser = async (event) => {
   }
 };
 
-const deleteUserPreferences = async (user_id) => {
+const deleteUserPreferences = async (user_id: string) => {
   const params = {
     TableName: process.env.USERPREFS,
     Key: {
@@ -135,8 +138,10 @@ const deleteUserPreferences = async (user_id) => {
   }
 };
 
-const deleteUser = async (event) => {
-  const { id } = JSON.parse(event.body);
+const deleteUser = async (
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> => {
+  const { id } = JSON.parse(event.body!);
 
   const params = {
     TableName: process.env.USERDB,
@@ -174,7 +179,7 @@ const deleteUser = async (event) => {
       }
     } else {
       return {
-        statusCode: 400,
+        statusCode: 404,
         body: "User does not exist",
       };
     }
@@ -186,8 +191,10 @@ const deleteUser = async (event) => {
   }
 };
 
-const editUser = async (event) => {
-  const { id, name, email, userHash } = JSON.parse(event.body);
+const editUser = async (
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> => {
+  const { id, name, email, userHash } = JSON.parse(event.body!);
 
   const params = {
     TableName: process.env.USERDB,
@@ -222,8 +229,10 @@ const editUser = async (event) => {
   }
 };
 
-const getUser = async (event) => {
-  const id = event.pathParameters.userId;
+const getUser = async (
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> => {
+  const id = event.pathParameters!.userId!;
 
   const params = {
     TableName: process.env.USERDB,
@@ -241,7 +250,7 @@ const getUser = async (event) => {
       };
     } else {
       return {
-        statusCode: 400,
+        statusCode: 404,
         body: "User does not exist",
       };
     }
@@ -253,7 +262,7 @@ const getUser = async (event) => {
   }
 };
 
-const getAllUsers = async (event) => {
+const getAllUsers = async (): Promise<APIGatewayProxyResultV2> => {
   const params = {
     TableName: process.env.USERDB,
   };
@@ -262,7 +271,7 @@ const getAllUsers = async (event) => {
     const data = await dynamoDb.send(new ScanCommand(params));
     return {
       statusCode: 200,
-      body: JSON.stringify(data.Items.map((item) => unmarshall(item))),
+      body: JSON.stringify(data.Items?.map((item) => unmarshall(item))),
     };
   } catch (error) {
     return {
@@ -272,11 +281,11 @@ const getAllUsers = async (event) => {
   }
 };
 
-exports.handler = async (event, context) => {
+exports.handler = async (event: APIGatewayProxyEventV2) => {
   switch (event.requestContext.http.method) {
     case "GET":
       if (event.rawPath.endsWith("users")) {
-        return await getAllUsers(event);
+        return await getAllUsers();
       } else {
         return await getUser(event);
       }
