@@ -194,20 +194,50 @@ const deleteUser = async (
 const editUser = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
-  const { id, name, email, userHash } = JSON.parse(event.body!);
+  const { id, name, email } = JSON.parse(event.body!);
 
-  const params = {
+  const getParams = {
     TableName: process.env.USERDB,
-    Item: {
+    Key: {
       id,
-      name,
-      email,
-      userHash,
     },
   };
 
+  // preserve attributes not being edited
+  let oldUserAttributes;
+
   try {
-    const response = await dynamoDb.send(new PutCommand(params));
+    const data = await dynamoDb.send(new GetCommand(getParams));
+    if (data.Item) {
+      oldUserAttributes = data.Item;
+    } else {
+      return {
+        statusCode: 404,
+        body: "User does not exist",
+      };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error getting user",
+    };
+  }
+
+  const putParams = {
+    TableName: process.env.USERDB,
+    Item: oldUserAttributes,
+  };
+
+  if (name) {
+    putParams.Item.name = name;
+  }
+
+  if (email) {
+    putParams.Item.email = email;
+  }
+
+  try {
+    const response = await dynamoDb.send(new PutCommand(putParams));
     const responseStatus = response.$metadata.httpStatusCode;
 
     if (responseStatus === 200) {
