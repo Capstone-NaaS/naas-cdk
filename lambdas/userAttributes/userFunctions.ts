@@ -88,7 +88,7 @@ const addUser = async (
           };
         } else {
           return {
-            statusCode: responseStatus,
+            statusCode: prefResponseStatus,
             body: "Error adding user preferences",
           };
         }
@@ -167,7 +167,7 @@ const deleteUser = async (
           };
         } else {
           return {
-            statusCode: responseStatus,
+            statusCode: prefResponseStatus,
             body: "Error deleting user preferences",
           };
         }
@@ -325,5 +325,10 @@ exports.handler = async (event: APIGatewayProxyEventV2) => {
       return await deleteUser(event);
     case "PUT":
       return await editUser(event);
+    default:
+      return {
+        statusCode: 404,
+        body: "Route not found",
+      };
   }
 };
