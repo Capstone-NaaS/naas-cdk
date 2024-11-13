@@ -259,6 +259,22 @@ const editUser = async (
   }
 };
 
+const getUserPreference = async (user_id: string) => {
+  const params = {
+    TableName: process.env.USERPREFS,
+    Key: {
+      user_id,
+    },
+  };
+
+  try {
+    const data = await dynamoDb.send(new GetCommand(params));
+    return data.Item;
+  } catch (error) {
+    console.error("Error getting user preferences:", error);
+  }
+};
+
 const getUser = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
@@ -274,6 +290,9 @@ const getUser = async (
   try {
     const data = await dynamoDb.send(new GetCommand(params));
     if (data.Item) {
+      data.Item.preferences = await getUserPreference(id);
+      delete data.Item.preferences.user_id;
+
       return {
         statusCode: 200,
         body: JSON.stringify(data.Item),
