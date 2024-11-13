@@ -38,10 +38,17 @@ export class SesStack extends Stack {
         environment: {
           SENDER_EMAIL: process.env.SENDER_EMAIL!,
           LOG_QUEUE: loggerQueue.queueUrl,
+          USER_ATTRIBUTES_TABLE:
+            commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
       }
     );
     this.sendEmail = sendEmail;
+
+    // grant permission to sendEmail lambda to access UserAttributes DB
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      sendEmail
+    );
 
     // grant permission to sendEmail lambda to send emails with SES
     sendEmail.addToRolePolicy(

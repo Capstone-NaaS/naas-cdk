@@ -4,12 +4,38 @@ import {
   DynamoDBDocumentClient,
   PutCommand,
   PutCommandInput,
+  UpdateCommand,
+  UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 
 const dbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dbClient);
 
 const CONNECTION_TABLE = process.env.CONNECTION_TABLE!;
+
+const updateLastSeen = async (user_id: string) => {
+  const params: UpdateCommandInput = {
+    TableName: process.env.USER_ATTRIBUTES_TABLE,
+    Key: {
+      id: user_id,
+    },
+    UpdateExpression: "SET #attrName = :attrValue",
+    ExpressionAttributeNames: {
+      "#attrName": "last_seen",
+    },
+    ExpressionAttributeValues: {
+      ":attrValue": new Date().toISOString(),
+    },
+    ReturnValues: "ALL_NEW",
+  };
+
+  try {
+    const data = await docClient.send(new UpdateCommand(params));
+    console.log("Update succeeded:", data);
+  } catch (error) {
+    console.error("Update failed:", error);
+  }
+};
 
 export const handler: Handler = async (event) => {
   const user_id = event.queryStringParameters.user_id;
@@ -20,6 +46,12 @@ export const handler: Handler = async (event) => {
       statusCode: 400,
       body: JSON.stringify({ message: "User ID is missing" }),
     };
+  }
+
+  try {
+    await updateLastSeen(user_id);
+  } catch (error) {
+    console.error("Error updating last seen:", error);
   }
 
   try {
