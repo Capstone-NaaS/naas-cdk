@@ -259,6 +259,22 @@ const editUser = async (
   }
 };
 
+const getUserPreference = async (user_id: string) => {
+  const params = {
+    TableName: process.env.USERPREFS,
+    Key: {
+      user_id,
+    },
+  };
+
+  try {
+    const data = await dynamoDb.send(new GetCommand(params));
+    return data.Item;
+  } catch (error) {
+    console.error("Error getting user preferences:", error);
+  }
+};
+
 const getUser = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
@@ -274,6 +290,9 @@ const getUser = async (
   try {
     const data = await dynamoDb.send(new GetCommand(params));
     if (data.Item) {
+      data.Item.preferences = await getUserPreference(id);
+      delete data.Item.preferences.user_id;
+
       return {
         statusCode: 200,
         body: JSON.stringify(data.Item),
@@ -292,6 +311,19 @@ const getUser = async (
   }
 };
 
+const getUserPreferences = async () => {
+  const params = {
+    TableName: process.env.USERPREFS,
+  };
+
+  try {
+    const data = await dynamoDb.send(new ScanCommand(params));
+    return data.Items?.map((item) => unmarshall(item));
+  } catch (error) {
+    console.error("Error getting user preferences:", error);
+  }
+};
+
 const getAllUsers = async (): Promise<APIGatewayProxyResultV2> => {
   const params = {
     TableName: process.env.USERDB,
@@ -299,9 +331,19 @@ const getAllUsers = async (): Promise<APIGatewayProxyResultV2> => {
 
   try {
     const data = await dynamoDb.send(new ScanCommand(params));
+    let users = data.Items?.map((item) => unmarshall(item));
+    let preferences = await getUserPreferences();
+
+    users!.forEach((user) => {
+      user.preferences = preferences!
+        .filter((p) => p.user_id === user.id)
+        .slice()[0];
+      delete user.preferences.user_id;
+    });
+
     return {
       statusCode: 200,
-      body: JSON.stringify(data.Items?.map((item) => unmarshall(item))),
+      body: JSON.stringify(users),
     };
   } catch (error) {
     return {
