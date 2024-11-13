@@ -55,7 +55,6 @@ export class NaasStage extends Stage {
     new HttpGWStack(this, `HttpGWStack-${this.stageName}`, {
       env: props?.env,
       stageName: this.stageName,
-      dynamoLoggingStack,
       commonStack,
     });
   }

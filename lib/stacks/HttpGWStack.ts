@@ -14,14 +14,12 @@ import {
   aws_apigatewayv2_authorizers,
 } from "aws-cdk-lib";
 
-import { DynamoLoggingStack } from "./DynamoLoggingStack";
 import * as path from "path";
 import { CommonStack } from "./CommonStack";
 import * as dotenv from "dotenv";
 dotenv.config();
 
 interface HttpGWStackProps extends StackProps {
-  dynamoLoggingStack: DynamoLoggingStack;
   stageName: string;
   commonStack: CommonStack;
 }
@@ -37,6 +35,21 @@ export class HttpGWStack extends Stack {
 
     const stageName = props.stageName || "defaultStage";
     const commonStack = props.commonStack;
+
+    // create getDLQ lambda
+    const getDLQ = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `getDLQ-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../../lambdas/httpGW/getDLQ.ts"),
+        environment: {
+          DLQ_URL: commonStack.dlq.queueUrl,
+        },
+      }
+    );
+    commonStack.dlq.grantConsumeMessages(getDLQ);
 
     // create userFunctions lambda
     const userFunctions = new aws_lambda_nodejs.NodejsFunction(
@@ -227,6 +240,20 @@ export class HttpGWStack extends Stack {
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "UserFunctions",
         userFunctions,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
+      ),
+      authorizer: lambdaAuthorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/dlq",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "GetDLQ",
+        getDLQ,
         {
           payloadFormatVersion:
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
