@@ -26,6 +26,7 @@ export class CommonStack extends Stack {
   public readonly processRequest: aws_lambda_nodejs.NodejsFunction;
   public readonly SAVE_NOTIFICATION_FN: string;
   public readonly loggerQueue: aws_sqs.Queue;
+  public readonly dlq: aws_sqs.Queue;
 
   constructor(scope: Construct, id: string, props: CommonStackProps) {
     super(scope, id, props);
@@ -73,6 +74,7 @@ export class CommonStack extends Stack {
       queueName: `DeadLetterQueue-${stageName}`,
       retentionPeriod: Duration.days(14),
     });
+    this.dlq = dlq;
 
     // create LoggerQueue
     const loggerQueue = new aws_sqs.Queue(
