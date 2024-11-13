@@ -106,6 +106,8 @@ export class WebSocketGWStack extends Stack {
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
           LOG_QUEUE: loggerQueue.queueUrl,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
+          USER_ATTRIBUTES_TABLE:
+            commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
@@ -135,6 +137,8 @@ export class WebSocketGWStack extends Stack {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
           WS_BROADCAST_LAMBDA: websocketBroadcast.functionName,
+          USER_ATTRIBUTES_TABLE:
+            commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
@@ -491,6 +495,12 @@ export class WebSocketGWStack extends Stack {
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(sendEmail);
     commonStack.userAttributesDB.UserAttributesTable.grantReadData(
       websocketAuthorizer
+    );
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      websocketConnect
+    );
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      websocketBroadcast
     );
 
     // permission for lambdas to call other lambdas
