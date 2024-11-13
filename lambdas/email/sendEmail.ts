@@ -76,24 +76,39 @@ export const handler: Handler = async (log: NotificationLogType) => {
 
   try {
     const sendEmailCommand = new SendEmailCommand(params);
-    await ses.send(sendEmailCommand);
-    console.log("Email sent successfully");
+    const emailResponse = await ses.send(sendEmailCommand);
 
-    const newLog: EmailLog = {
-      status: "Email sent.",
-      notification_id: log.notification_id,
-      user_id: log.user_id,
-      channel: "email",
-      body: {
-        message: log.message,
-        subject: log.subject!,
-        receiver_email: log.receiver_email!,
-      },
-    };
+    if (emailResponse.$metadata.httpStatusCode === 200) {
+      console.log("Email sent successfully:", emailResponse);
 
-    await sendLog(newLog);
-    await updateLastNotified(log.user_id);
-    // TODO: need to add log for successful email send
+      const newLog: EmailLog = {
+        status: "Email sent.",
+        notification_id: log.notification_id,
+        user_id: log.user_id,
+        channel: "email",
+        body: {
+          message: log.message,
+          subject: log.subject!,
+          receiver_email: log.receiver_email!,
+        },
+      };
+
+      await sendLog(newLog);
+      await updateLastNotified(log.user_id);
+    } else {
+      const newLog: EmailLog = {
+        status: "Email could not be sent.",
+        notification_id: log.notification_id,
+        user_id: log.user_id,
+        channel: "email",
+        body: {
+          message: log.message,
+          subject: log.subject!,
+          receiver_email: log.receiver_email!,
+        },
+      };
+      await sendLog(newLog);
+    }
   } catch (error) {
     console.error("Error sending email:", error);
   }

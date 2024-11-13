@@ -122,6 +122,16 @@ export const handler: Handler = async (event: EventType) => {
       };
     }
   } catch (error) {
+    const log: InAppLog = {
+      status: "Notification unable to be broadcast.",
+      notification_id: notification.notification_id,
+      user_id,
+      channel: "in-app",
+      body: {
+        message: notification.message,
+      },
+    };
+    await sendLog(log);
     console.error("Error broadcasting message:", error);
     return {
       statusCode: 500,
