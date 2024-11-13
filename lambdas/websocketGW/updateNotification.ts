@@ -168,7 +168,7 @@ export const handler: Handler = async (event) => {
       status,
       notification_id,
       user_id,
-      channel: "in-app",
+      channel: "in_app",
       body: {
         message,
       },

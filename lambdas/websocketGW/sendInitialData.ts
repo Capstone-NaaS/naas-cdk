@@ -59,7 +59,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    // query user preferences table to see if user wants to receive in-app notifiations
+    // query user preferences table to see if user wants to receive in_app notifiations
     const getCommand = new GetCommand({
       TableName: process.env.USER_PREFERENCES_TABLE,
       Key: { user_id },
