@@ -60,12 +60,30 @@ export class HttpGWStack extends Stack {
         handler: "handler",
         entry: path.join(
           __dirname,
-          "../../lambdas/userAttributes/userFunctions.js"
+          "../../lambdas/userAttributes/userFunctions.ts"
         ),
         environment: {
           USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,
           USERPREFS:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+        },
+      }
+    );
+
+    // create fetchNotifLogsFunctions lambda
+    const fetchNotifLogsFunctions = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `fetchNotifLogsFunctions-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/notificationLogs/fetchNotifLogsFunctions.ts"
+        ),
+        environment: {
+          NOTIFICATION_LOG_TABLE:
+            commonStack.notificationLogsDB.NotificationLogTable.tableName,
         },
       }
     );
@@ -107,6 +125,11 @@ export class HttpGWStack extends Stack {
 
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadWriteData(
       userFunctions
+    );
+
+    // give fetchNotifLogsFunctions permission to access notificationLogs
+    commonStack.notificationLogsDB.NotificationLogTable.grantReadData(
+      fetchNotifLogsFunctions
     );
 
     // create http api gateway
@@ -161,6 +184,20 @@ export class HttpGWStack extends Stack {
       integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
         "ProcessIncomingNotificationRequest",
         commonStack.processRequest,
+        {
+          payloadFormatVersion:
+            aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
+        }
+      ),
+      authorizer: lambdaAuthorizer,
+    });
+
+    httpApi.addRoutes({
+      path: "/notifications",
+      methods: [aws_apigatewayv2.HttpMethod.GET],
+      integration: new aws_apigatewayv2_integrations.HttpLambdaIntegration(
+        "FetchNotificationLogs",
+        fetchNotifLogsFunctions,
         {
           payloadFormatVersion:
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,

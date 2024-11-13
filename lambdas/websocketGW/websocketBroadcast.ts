@@ -4,6 +4,8 @@ import {
   DynamoDBDocumentClient,
   QueryCommand,
   QueryCommandInput,
+  UpdateCommand,
+  UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
@@ -36,6 +38,30 @@ interface EventType {
   user_id: string;
   connectionId?: string;
   notification: NotificationType;
+}
+
+async function updateLastNotified(user_id: string) {
+  const params: UpdateCommandInput = {
+    TableName: process.env.USER_ATTRIBUTES_TABLE,
+    Key: {
+      id: user_id,
+    },
+    UpdateExpression: "SET #attrName = :attrValue",
+    ExpressionAttributeNames: {
+      "#attrName": "last_notified",
+    },
+    ExpressionAttributeValues: {
+      ":attrValue": new Date().toISOString(),
+    },
+    ReturnValues: "ALL_NEW",
+  };
+
+  try {
+    const data = await docClient.send(new UpdateCommand(params));
+    console.log("Update succeeded:", data);
+  } catch (error) {
+    console.error("Update failed:", error);
+  }
 }
 
 export const handler: Handler = async (event: EventType) => {
@@ -74,6 +100,7 @@ export const handler: Handler = async (event: EventType) => {
     };
 
     await sendLog(log);
+    await updateLastNotified(user_id);
 
     if (connectionId) {
       await apiGateway.postToConnection({
