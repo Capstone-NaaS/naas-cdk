@@ -73,6 +73,7 @@ export class CommonStack extends Stack {
     const dlq = new aws_sqs.Queue(this, `deadLetterQueue-${stageName}`, {
       queueName: `DeadLetterQueue-${stageName}`,
       retentionPeriod: Duration.days(14),
+      visibilityTimeout: Duration.seconds(1),
     });
     this.dlq = dlq;
 
