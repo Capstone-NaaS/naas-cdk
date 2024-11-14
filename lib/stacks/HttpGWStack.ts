@@ -88,7 +88,7 @@ export class HttpGWStack extends Stack {
       }
     );
 
-    // create authorizer lambda
+    // create http authorizer lambda
     const httpAuthorizer = new aws_lambda_nodejs.NodejsFunction(
       this,
       `httpAuthorizer-${stageName}`,
@@ -109,6 +109,40 @@ export class HttpGWStack extends Stack {
       new aws_apigatewayv2_authorizers.HttpLambdaAuthorizer(
         "LambdaAuthorizer",
         httpAuthorizer,
+        {
+          identitySource: ["$request.header.Authorization"],
+          responseTypes: [
+            aws_apigatewayv2_authorizers.HttpLambdaResponseType.SIMPLE,
+          ],
+          resultsCacheTtl: Duration.seconds(0),
+        }
+      );
+
+    // create dashboard authorizer lambda
+    const dashboardAuthorizer = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `dashboardAuthorizer-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../../lambdas/httpGW/dashboardAuthorizer.ts"
+        ),
+        environment: {
+          SECRET_KEY: process.env.SECRET_KEY!,
+          API_KEY: process.env.API_KEY!,
+        },
+        timeout: Duration.seconds(29),
+        memorySize: 256,
+      }
+    );
+
+    // create dashboard authorizer
+    const lambdaDashboardAuthorizer =
+      new aws_apigatewayv2_authorizers.HttpLambdaAuthorizer(
+        "LambdaDashboardAuthorizer",
+        dashboardAuthorizer,
         {
           identitySource: ["$request.header.Authorization"],
           responseTypes: [
@@ -203,7 +237,7 @@ export class HttpGWStack extends Stack {
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
         }
       ),
-      authorizer: lambdaAuthorizer,
+      authorizer: lambdaDashboardAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -231,7 +265,7 @@ export class HttpGWStack extends Stack {
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
         }
       ),
-      authorizer: lambdaAuthorizer,
+      authorizer: lambdaDashboardAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -245,7 +279,7 @@ export class HttpGWStack extends Stack {
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
         }
       ),
-      authorizer: lambdaAuthorizer,
+      authorizer: lambdaDashboardAuthorizer,
     });
 
     httpApi.addRoutes({
@@ -259,7 +293,7 @@ export class HttpGWStack extends Stack {
             aws_apigatewayv2.PayloadFormatVersion.VERSION_2_0,
         }
       ),
-      authorizer: lambdaAuthorizer,
+      authorizer: lambdaDashboardAuthorizer,
     });
 
     // output endpoint
