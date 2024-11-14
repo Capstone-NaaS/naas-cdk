@@ -121,7 +121,7 @@ export class HttpGWStack extends Stack {
     // create dashboard authorizer lambda
     const dashboardAuthorizer = new aws_lambda_nodejs.NodejsFunction(
       this,
-      `dashboardAuthorizer-${stageName}`,
+      `dashboardAuthorizerFn-${stageName}`,
       {
         runtime: aws_lambda.Runtime.NODEJS_20_X,
         handler: "handler",
@@ -301,6 +301,18 @@ export class HttpGWStack extends Stack {
       value: `https://${httpApi.apiId}.execute-api.${this.region}.amazonaws.com/${stageName}`,
       description: "invoke url for the http api dev stage",
       exportName: `HttpApiInvokeUrl-${stageName}`,
+    });
+
+    new CfnOutput(this, `HTTPAuthorizer-${stageName}`, {
+      value: httpAuthorizer.functionName,
+      description: "http gateway authorizer function name",
+      exportName: `HTTPAuthorizer-${stageName}`,
+    });
+
+    new CfnOutput(this, `dashboardAuthorizer-${stageName}`, {
+      value: dashboardAuthorizer.functionName,
+      description: "dashboard authorizer function name",
+      exportName: `dashboardAuthorizer-${stageName}`,
     });
   }
 }

@@ -569,5 +569,11 @@ export class WebSocketGWStack extends Stack {
       exportName: `wssEndpoint-${stageName}`,
       value: `wss://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
     });
+
+    new CfnOutput(this, `WebSocketAuthorizer-${stageName}`, {
+      value: websocketAuthorizer.functionName,
+      description: "websocket authorizer function name",
+      exportName: `WebSocketAuthorizer-${stageName}`,
+    });
   }
 }
