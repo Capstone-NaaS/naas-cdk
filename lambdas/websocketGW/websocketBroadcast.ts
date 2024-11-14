@@ -126,7 +126,7 @@ export const handler: Handler = async (event: EventType) => {
       status: "Notification unable to be broadcast.",
       notification_id: notification.notification_id,
       user_id,
-      channel: "in-app",
+      channel: "in_app",
       body: {
         message: notification.message,
       },
