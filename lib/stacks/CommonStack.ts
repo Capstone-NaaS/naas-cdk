@@ -83,7 +83,7 @@ export class CommonStack extends Stack {
       `notificationQueue-${stageName}`,
       {
         visibilityTimeout: Duration.seconds(30), // Optional: Customize visibility timeout
-        receiveMessageWaitTime: Duration.seconds(2),
+        receiveMessageWaitTime: Duration.seconds(6),
         deadLetterQueue: {
           queue: dlq,
           maxReceiveCount: 3,

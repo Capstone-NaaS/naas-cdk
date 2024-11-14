@@ -71,6 +71,7 @@ export class DynamoLoggingStack extends Stack {
         maxBatchingWindow: Duration.seconds(2),
         batchSize: 100,
         maxConcurrency: 10,
+        reportBatchItemFailures: true,
       })
     );
 
