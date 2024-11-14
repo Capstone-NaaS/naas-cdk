@@ -24,7 +24,7 @@ async function getUserPreference(user_id: string, channel: string) {
   return response.Item![channel];
 }
 
-// pass notification to lambda for in-app notification
+// pass notification to lambda for in_app notification
 async function inAppNotification(log: NotificationLogType) {
   try {
     const command = new InvokeCommand({
@@ -77,7 +77,7 @@ function createLog(
     user_id,
     status, //notification created, notification sent, notification recieved
     message,
-    channel, // in-app, email, slack
+    channel, // in_app, email, slack
     notification_id,
   };
 

@@ -93,7 +93,7 @@ export const handler: Handler = async (event: EventType) => {
       status: "Notification queued for sending.",
       notification_id: notification.notification_id,
       user_id,
-      channel: "in-app",
+      channel: "in_app",
       body: {
         message: notification.message,
       },
