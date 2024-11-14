@@ -281,6 +281,7 @@ export class WebSocketGWStack extends Stack {
         ),
         environment: {
           SECRET_KEY: process.env.SECRET_KEY!,
+          USERDB: commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(30),
         memorySize: 256,
