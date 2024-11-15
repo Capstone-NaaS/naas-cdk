@@ -52,6 +52,7 @@ export class DynamoLoggingStack extends Stack {
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
+        timeout: Duration.seconds(10),
       }
     );
     this.dynamoLogger = dynamoLogger;

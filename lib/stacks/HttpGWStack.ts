@@ -67,7 +67,7 @@ export class HttpGWStack extends Stack {
           USERPREFS:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
-        timeout: Duration.seconds(120),
+        timeout: Duration.seconds(10),
       }
     );
 
@@ -86,7 +86,7 @@ export class HttpGWStack extends Stack {
           NOTIFICATION_LOG_TABLE:
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
         },
-        timeout: Duration.seconds(120),
+        timeout: Duration.seconds(10),
       }
     );
 

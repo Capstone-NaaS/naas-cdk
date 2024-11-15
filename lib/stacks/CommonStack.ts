@@ -107,6 +107,7 @@ export class CommonStack extends Stack {
           USER_ATTRIBUTES_TABLE: userAttributesDB.UserAttributesTable.tableName,
           QUEUE_URL: loggerQueue.queueUrl,
         },
+        timeout: Duration.seconds(10),
       }
     );
     this.processRequest = processRequest;
