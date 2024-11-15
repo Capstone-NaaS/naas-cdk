@@ -6,6 +6,7 @@ import {
   aws_iam,
   aws_lambda_nodejs,
   aws_lambda,
+  Duration,
 } from "aws-cdk-lib";
 import { CommonStack } from "./CommonStack";
 import * as path from "path";
@@ -41,6 +42,7 @@ export class SesStack extends Stack {
           USER_ATTRIBUTES_TABLE:
             commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
+        timeout: Duration.seconds(10),
       }
     );
     this.sendEmail = sendEmail;

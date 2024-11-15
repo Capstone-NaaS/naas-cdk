@@ -25,6 +25,7 @@ export interface NotificationLogType {
   receiver_email?: string;
   subject?: string;
   ttl: number;
+  slack?: string;
 }
 
 export interface InAppLog {
@@ -46,5 +47,15 @@ export interface EmailLog {
     message: string;
     subject: string;
     receiver_email: string;
+  };
+}
+
+export interface SlackLog {
+  status?: string;
+  notification_id: string;
+  user_id: string;
+  channel: "slack";
+  body: {
+    message: string;
   };
 }

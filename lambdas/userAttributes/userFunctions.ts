@@ -18,6 +18,7 @@ const addUserPreferences = async (user_id: string) => {
       user_id,
       email: true,
       in_app: true,
+      slack: true,
     },
   };
 
@@ -47,7 +48,7 @@ const addUserPreferences = async (user_id: string) => {
 const addUser = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
-  const { id, name, email } = JSON.parse(event.body!);
+  const { id, name, email, slack } = JSON.parse(event.body!);
 
   const putParams = {
     TableName: process.env.USERDB,
@@ -55,6 +56,7 @@ const addUser = async (
       id,
       name,
       email,
+      slack,
       created_at: new Date().toISOString(),
     },
   };
@@ -194,7 +196,7 @@ const deleteUser = async (
 const editUser = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
-  const { id, name, email } = JSON.parse(event.body!);
+  const { id, name, email, slack } = JSON.parse(event.body!);
 
   const getParams = {
     TableName: process.env.USERDB,
@@ -234,6 +236,10 @@ const editUser = async (
 
   if (email) {
     putParams.Item.email = email;
+  }
+
+  if (slack) {
+    putParams.Item.slack = slack;
   }
 
   try {

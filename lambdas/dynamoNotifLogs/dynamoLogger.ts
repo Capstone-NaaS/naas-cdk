@@ -56,6 +56,33 @@ async function emailNotification(log: NotificationLogType) {
   }
 }
 
+// pass notification to lambda for slack notification
+async function slackNotification(log: NotificationLogType) {
+  // TEMPORARY SLACK WEBHOOK REQUEST
+  const response = await fetch(log.slack!, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: log.message,
+    }),
+  });
+
+  // NEED TO INVOKE SENDSLACK LAMBDA FROM HERE
+
+  // try {
+  //   const command = new InvokeCommand({
+  //     FunctionName: process.env.SLACK_NOTIFICATION,
+  //     InvocationType: "Event",
+  //     Payload: JSON.stringify(log),
+  //   });
+  //   const response = await lambdaClient.send(command);
+  //   return "Notification event sent to slack";
+  // } catch (error) {
+  //   console.log("Error invoking the slack Lambda function: ", error);
+  //   return error;
+  // }
+}
+
 function createLog(
   status: string,
   user_id: string,
@@ -63,7 +90,8 @@ function createLog(
   channel: string,
   notification_id: string,
   receiver_email?: string,
-  subject?: string
+  subject?: string,
+  slack?: string
 ): NotificationLogType {
   if (!notification_id) {
     notification_id = randomUUID();
@@ -84,6 +112,10 @@ function createLog(
   if (channel === "email") {
     log.receiver_email = receiver_email;
     log.subject = subject;
+  }
+
+  if (channel === "slack") {
+    log.slack = slack;
   }
 
   return log;
@@ -118,8 +150,10 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         body.channel,
         body.notification_id,
         body.body.receiver_email,
-        body.body.subject
+        body.body.subject,
+        body.body.slack
       );
+
       await addLog(log);
 
       if (!body.status) {
@@ -128,6 +162,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           await inAppNotification(log);
         } else if (preference && body.channel === "email") {
           await emailNotification(log);
+        } else if (preference && body.channel == "slack") {
+          await slackNotification(log);
         } else if (!preference) {
           const log: NotificationLogType = createLog(
             "Notification not sent - channel disabled by user.",
