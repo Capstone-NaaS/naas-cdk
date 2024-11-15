@@ -18,6 +18,7 @@ const addUserPreferences = async (user_id: string) => {
       user_id,
       email: true,
       in_app: true,
+      slack: true,
     },
   };
 

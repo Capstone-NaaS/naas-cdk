@@ -34,12 +34,21 @@ async function createRequest(
       },
     };
   } else if (channel_type === "email") {
-    const user_email = await fetchUserAttribute(user_id);
+    const user_email = await fetchEmailAttribute(user_id);
     return {
       ...base_log,
       body: {
         receiver_email: user_email,
         subject: channel_body.subject,
+        message: channel_body.message,
+      },
+    };
+  } else if (channel_type === "slack") {
+    const slack = await fetchSlackAttribute(user_id);
+    return {
+      ...base_log,
+      body: {
+        slack,
         message: channel_body.message,
       },
     };
@@ -73,7 +82,7 @@ async function verifyUser(user_id: string) {
   }
 }
 
-async function fetchUserAttribute(user_id: string) {
+async function fetchEmailAttribute(user_id: string) {
   const params = {
     TableName: process.env.USER_ATTRIBUTES_TABLE,
     Key: {
@@ -87,13 +96,35 @@ async function fetchUserAttribute(user_id: string) {
     } else {
       return {
         statusCode: 400,
-        body: "User attribute does not exists",
+        body: "User attribute does not exist",
       };
     }
   } catch (error) {
     return {
       statusCode: 500,
-      body: "Error getting user attribute",
+      body: "Error getting user email",
+    };
+  }
+}
+
+async function fetchSlackAttribute(user_id: string) {
+  const params = {
+    TableName: process.env.USER_ATTRIBUTES_TABLE,
+    Key: {
+      id: user_id,
+    },
+  };
+  try {
+    const data = await dynamoDb.send(new GetCommand(params));
+    if (data.Item && data.Item.slack) {
+      return data.Item.slack;
+    } else {
+      return "";
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: "Error getting slack attribute",
     };
   }
 }
