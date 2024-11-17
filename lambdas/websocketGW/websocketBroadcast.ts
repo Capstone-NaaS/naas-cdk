@@ -89,19 +89,6 @@ export const handler: Handler = async (event: EventType) => {
           : null;
     }
 
-    const queuedLog: InAppLog = {
-      status: "Notification queued for sending.",
-      notification_id: notification.notification_id,
-      user_id,
-      channel: "in_app",
-      body: {
-        message: notification.message,
-      },
-    };
-
-    await sendLog(queuedLog);
-    await updateLastNotified(user_id);
-
     if (connectionId) {
       await apiGateway.postToConnection({
         ConnectionId: connectionId,
@@ -110,6 +97,8 @@ export const handler: Handler = async (event: EventType) => {
           notifications: [notification],
         }),
       });
+
+      await updateLastNotified(user_id);
 
       // add log for notification being sent
       const sentLog: InAppLog = {
@@ -144,6 +133,18 @@ export const handler: Handler = async (event: EventType) => {
         body: JSON.stringify({ message: "Messages sent to the user" }),
       };
     } else {
+      const queuedLog: InAppLog = {
+        status: "Notification queued for sending.",
+        notification_id: notification.notification_id,
+        user_id,
+        channel: "in_app",
+        body: {
+          message: notification.message,
+        },
+      };
+
+      await sendLog(queuedLog);
+
       return {
         statusCode: 200,
         body: JSON.stringify({ message: "User currently not connected" }),
