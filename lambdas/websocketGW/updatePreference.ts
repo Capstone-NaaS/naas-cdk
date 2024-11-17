@@ -6,6 +6,7 @@ import {
   QueryCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { ApiGatewayManagementApi } from "@aws-sdk/client-apigatewaymanagementapi";
+import { Handler } from "aws-lambda";
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -33,7 +34,7 @@ async function getConnectionId(user_id: string) {
     : null;
 }
 
-export const handler = async (event) => {
+export const handler: Handler = async (event) => {
   const payload = JSON.parse(event.body).payload;
   try {
     const putCommand = new PutCommand({
@@ -61,9 +62,16 @@ export const handler = async (event) => {
     };
   } catch (error) {
     console.error("Error updating user preferences: ", error);
-    return {
-      statusCode: 500,
-      body: error.message,
-    };
+    if (error instanceof Error) {
+      return {
+        statusCode: 500,
+        body: error.message,
+      };
+    } else {
+      return {
+        statusCode: 500,
+        body: "Error updating user preferences",
+      };
+    }
   }
 };

@@ -89,7 +89,7 @@ export const handler: Handler = async (event: EventType) => {
           : null;
     }
 
-    const log: InAppLog = {
+    const queuedLog: InAppLog = {
       status: "Notification queued for sending.",
       notification_id: notification.notification_id,
       user_id,
@@ -99,7 +99,7 @@ export const handler: Handler = async (event: EventType) => {
       },
     };
 
-    await sendLog(log);
+    await sendLog(queuedLog);
     await updateLastNotified(user_id);
 
     if (connectionId) {
@@ -110,6 +110,34 @@ export const handler: Handler = async (event: EventType) => {
           notifications: [notification],
         }),
       });
+
+      // add log for notification being sent
+      const sentLog: InAppLog = {
+        status: "Notification sent.",
+        notification_id: notification.notification_id,
+        user_id,
+        channel: "in_app",
+        body: {
+          message: notification.message,
+        },
+      };
+
+      await sendLog(sentLog);
+
+      // update active notification status
+      const updateCommand = new UpdateCommand({
+        TableName: process.env.ACTIVE_NOTIF_TABLE,
+        Key: {
+          user_id: notification.user_id,
+          created_at: notification.created_at,
+        },
+        UpdateExpression: "SET delivered = :newValue",
+        ExpressionAttributeValues: {
+          ":newValue": true,
+        },
+      });
+
+      await docClient.send(updateCommand);
 
       return {
         statusCode: 200,
