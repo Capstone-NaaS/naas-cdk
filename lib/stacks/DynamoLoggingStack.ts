@@ -33,6 +33,31 @@ export class DynamoLoggingStack extends Stack {
     const sendEmail = props.sesStack.sendEmail;
     const loggerQueue = props.commonStack.loggerQueue;
 
+    // create sendSlack lambda
+    const sendSlack = new aws_lambda_nodejs.NodejsFunction(
+      this,
+      `sendSlack-${stageName}`,
+      {
+        runtime: aws_lambda.Runtime.NODEJS_20_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../../lambdas/slack/sendSlack.ts"),
+        environment: {
+          LOG_QUEUE: loggerQueue.queueUrl,
+          USER_ATTRIBUTES_TABLE:
+            commonStack.userAttributesDB.UserAttributesTable.tableName,
+        },
+        timeout: Duration.seconds(10),
+      }
+    );
+
+    // grant permission to sendSlack lambda to access UserAttributes DB
+    commonStack.userAttributesDB.UserAttributesTable.grantReadWriteData(
+      sendSlack
+    );
+
+    // grant permission to sendEmail lambda to send message to SQS
+    loggerQueue.grantSendMessages(sendSlack);
+
     // create dynamoLogger lambda
     const dynamoLogger = new aws_lambda_nodejs.NodejsFunction(
       this,
@@ -51,6 +76,7 @@ export class DynamoLoggingStack extends Stack {
           EMAIL_NOTIFICATION: sendEmail.functionName,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
+          SLACK_NOTIFICATION: sendSlack.functionName,
         },
         timeout: Duration.seconds(20),
       }
@@ -66,6 +92,7 @@ export class DynamoLoggingStack extends Stack {
     );
 
     sendEmail.grantInvoke(dynamoLogger);
+    sendSlack.grantInvoke(dynamoLogger);
 
     dynamoLogger.addEventSource(
       new aws_lambda_event_sources.SqsEventSource(loggerQueue, {

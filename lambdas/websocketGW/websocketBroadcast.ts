@@ -90,7 +90,7 @@ export const handler: Handler = async (event: EventType) => {
     }
 
     const log: InAppLog = {
-      status: "Notification queued for sending.",
+      status: "In-app notification queued for sending.",
       notification_id: notification.notification_id,
       user_id,
       channel: "in_app",
@@ -123,7 +123,7 @@ export const handler: Handler = async (event: EventType) => {
     }
   } catch (error) {
     const log: InAppLog = {
-      status: "Notification unable to be broadcast.",
+      status: "In-app notification unable to be broadcast.",
       notification_id: notification.notification_id,
       user_id,
       channel: "in_app",

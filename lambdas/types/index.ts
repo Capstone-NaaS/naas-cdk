@@ -56,6 +56,7 @@ export interface SlackLog {
   user_id: string;
   channel: "slack";
   body: {
+    slack: string;
     message: string;
   };
 }

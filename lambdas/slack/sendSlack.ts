@@ -49,69 +49,51 @@ async function updateLastNotified(user_id: string) {
 }
 
 export const handler: Handler = async (log: NotificationLogType) => {
-  const response = await fetch(log.slack!, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: log.message,
-    }),
-  });
+  try {
+    const response = await fetch(log.slack!, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: log.message,
+      }),
+    });
 
-  // const params: SendEmailCommandInput = {
-  //   Destination: {
-  //     ToAddresses: [log.receiver_email!], // must be verified emails in sandbox
-  //   },
-  //   Message: {
-  //     Body: {
-  //       Text: {
-  //         Data: `${log.message}`,
-  //       },
-  //     },
-  //     Subject: {
-  //       Data: log.subject,
-  //     },
-  //   },
-  //   Source: process.env.SENDER_EMAIL, // must be verified in SES
-  // };
+    if (response.status === 200) {
+      const newLog: SlackLog = {
+        status: "Slack notification sent.",
+        notification_id: log.notification_id,
+        user_id: log.user_id,
+        channel: "slack",
+        body: {
+          slack: log.slack!,
+          message: log.message,
+        },
+      };
 
-  // try {
-  //   const sendEmailCommand = new SendEmailCommand(params);
-  //   const emailResponse = await ses.send(sendEmailCommand);
+      await sendLog(newLog);
+      await updateLastNotified(log.user_id);
+    } else {
+      const newLog: SlackLog = {
+        status: "Slack notification could not be sent.",
+        notification_id: log.notification_id,
+        user_id: log.user_id,
+        channel: "slack",
+        body: {
+          slack: log.slack!,
+          message: log.message,
+        },
+      };
 
-  //   if (emailResponse.$metadata.httpStatusCode === 200) {
-  //     console.log("Email sent successfully:", emailResponse);
+      await sendLog(newLog);
+    }
+  } catch (error) {
+    console.error("Error sending slack notification:", error);
+  }
 
-  //     const newLog: EmailLog = {
-  //       status: "Email sent.",
-  //       notification_id: log.notification_id,
-  //       user_id: log.user_id,
-  //       channel: "email",
-  //       body: {
-  //         message: log.message,
-  //         subject: log.subject!,
-  //         receiver_email: log.receiver_email!,
-  //       },
-  //     };
-
-  //     await sendLog(newLog);
-  //     await updateLastNotified(log.user_id);
-  //   } else {
-  //     const newLog: EmailLog = {
-  //       status: "Email could not be sent.",
-  //       notification_id: log.notification_id,
-  //       user_id: log.user_id,
-  //       channel: "email",
-  //       body: {
-  //         message: log.message,
-  //         subject: log.subject!,
-  //         receiver_email: log.receiver_email!,
-  //       },
-  //     };
-  //     await sendLog(newLog);
-  //   }
-  // } catch (error) {
-  //   console.error("Error sending email:", error);
-  // }
+  const response = {
+    statusCode: 200,
+    body: JSON.stringify("Slack notification processed successfully"),
+  };
 
   return response;
 };

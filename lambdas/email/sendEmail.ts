@@ -115,7 +115,7 @@ export const handler: Handler = async (log: NotificationLogType) => {
 
   const response = {
     statusCode: 200,
-    body: JSON.stringify("test response"),
+    body: JSON.stringify("Email processed successfully"),
   };
 
   return response;
