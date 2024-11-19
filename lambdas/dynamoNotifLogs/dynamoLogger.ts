@@ -58,29 +58,18 @@ async function emailNotification(log: NotificationLogType) {
 
 // pass notification to lambda for slack notification
 async function slackNotification(log: NotificationLogType) {
-  // TEMPORARY SLACK WEBHOOK REQUEST
-  const response = await fetch(log.slack!, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: log.message,
-    }),
-  });
-
-  // NEED TO INVOKE SENDSLACK LAMBDA FROM HERE
-
-  // try {
-  //   const command = new InvokeCommand({
-  //     FunctionName: process.env.SLACK_NOTIFICATION,
-  //     InvocationType: "Event",
-  //     Payload: JSON.stringify(log),
-  //   });
-  //   const response = await lambdaClient.send(command);
-  //   return "Notification event sent to slack";
-  // } catch (error) {
-  //   console.log("Error invoking the slack Lambda function: ", error);
-  //   return error;
-  // }
+  try {
+    const command = new InvokeCommand({
+      FunctionName: process.env.SLACK_NOTIFICATION,
+      InvocationType: "Event",
+      Payload: JSON.stringify(log),
+    });
+    const response = await lambdaClient.send(command);
+    return "Notification event sent to Slack";
+  } catch (error) {
+    console.log("Error invoking the Slack Lambda function: ", error);
+    return error;
+  }
 }
 
 function createLog(

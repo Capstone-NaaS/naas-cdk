@@ -97,7 +97,7 @@ export const handler: Handler = async (log: NotificationLogType) => {
       await updateLastNotified(log.user_id);
     } else {
       const newLog: EmailLog = {
-        status: "Email could not be sent.",
+        status: "Email could not be sent: SES failure.",
         notification_id: log.notification_id,
         user_id: log.user_id,
         channel: "email",
@@ -107,15 +107,28 @@ export const handler: Handler = async (log: NotificationLogType) => {
           receiver_email: log.receiver_email!,
         },
       };
+
       await sendLog(newLog);
     }
   } catch (error) {
-    console.error("Error sending email:", error);
+    const newLog: EmailLog = {
+      status: "Error sending email.",
+      notification_id: log.notification_id,
+      user_id: log.user_id,
+      channel: "email",
+      body: {
+        message: log.message,
+        subject: log.subject!,
+        receiver_email: log.receiver_email!,
+      },
+    };
+
+    await sendLog(newLog);
   }
 
   const response = {
     statusCode: 200,
-    body: JSON.stringify("test response"),
+    body: JSON.stringify("Email processed successfully"),
   };
 
   return response;
