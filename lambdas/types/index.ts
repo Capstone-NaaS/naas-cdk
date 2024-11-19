@@ -1,11 +1,10 @@
-import { StreamProcessingStartSelector } from "aws-sdk/clients/rekognition";
-
 export interface NotificationType {
   notification_id: string;
   user_id: string;
   message: string;
   created_at: string;
   status: string;
+  delivered: boolean;
 }
 
 export interface UpdatedNotificationType {

@@ -105,7 +105,7 @@ export const handler: Handler = async (event) => {
             ConnectionId: connectionId,
             Data: JSON.stringify({
               topic: "notif_updated",
-              status: "Notification read.",
+              status: "read",
               notification_id,
             }),
           });
@@ -139,7 +139,7 @@ export const handler: Handler = async (event) => {
             ConnectionId: connectionId,
             Data: JSON.stringify({
               topic: "notif_updated",
-              status: "Notification deleted.",
+              status: "delete",
               notification_id,
             }),
           });
@@ -164,8 +164,16 @@ export const handler: Handler = async (event) => {
         break;
     }
 
+    let logStatus;
+
+    if (status === "read") {
+      logStatus = "Notification read.";
+    } else if (status === "delete") {
+      logStatus = "Notification deleted.";
+    }
+
     const log: InAppLog = {
-      status,
+      status: logStatus,
       notification_id,
       user_id,
       channel: "in_app",
