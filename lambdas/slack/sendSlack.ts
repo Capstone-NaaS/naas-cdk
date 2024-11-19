@@ -87,7 +87,18 @@ export const handler: Handler = async (log: NotificationLogType) => {
       await sendLog(newLog);
     }
   } catch (error) {
-    console.error("Error sending slack notification:", error);
+    const newLog: SlackLog = {
+      status: "Error sending Slack notification.",
+      notification_id: log.notification_id,
+      user_id: log.user_id,
+      channel: "slack",
+      body: {
+        slack: log.slack!,
+        message: log.message,
+      },
+    };
+
+    await sendLog(newLog);
   }
 
   const response = {
