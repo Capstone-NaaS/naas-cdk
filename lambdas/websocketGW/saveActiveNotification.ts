@@ -21,6 +21,7 @@ export const handler: Handler = async (log: NotificationLogType) => {
         ...notification,
         created_at: new Date(notification.created_at).toISOString(),
         status: "unread",
+        delivered: false,
       },
     };
 

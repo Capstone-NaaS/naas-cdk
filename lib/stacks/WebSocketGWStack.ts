@@ -103,6 +103,7 @@ export class WebSocketGWStack extends Stack {
           externalModules: ["@aws-sdk"],
         },
         environment: {
+          ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
           LOG_QUEUE: loggerQueue.queueUrl,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
@@ -252,6 +253,7 @@ export class WebSocketGWStack extends Stack {
         environment: {
           ACTIVE_NOTIF_TABLE: activeNotifDdb.ActiveNotifDdb.tableName,
           CONNECTION_TABLE: connectionIDddb.ConnectionIdTable.tableName,
+          LOG_QUEUE: loggerQueue.queueUrl,
           USER_PREFERENCES_TABLE:
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
           WEBSOCKET_ENDPOINT: `https://${wsapi.ref}.execute-api.${this.region}.amazonaws.com/${stageName}`,
@@ -478,8 +480,9 @@ export class WebSocketGWStack extends Stack {
     activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
     activeNotifDdb.ActiveNotifDdb.grantReadData(websocketConnect);
     activeNotifDdb.ActiveNotifDdb.grantReadWriteData(updateNotification);
-    activeNotifDdb.ActiveNotifDdb.grantReadData(sendInitialData);
+    activeNotifDdb.ActiveNotifDdb.grantReadWriteData(sendInitialData);
     activeNotifDdb.ActiveNotifDdb.grantWriteData(saveActiveNotification);
+    activeNotifDdb.ActiveNotifDdb.grantWriteData(websocketBroadcast);
 
     commonStack.userPreferencesDdb.UserPreferencesDdb.grantReadData(
       websocketBroadcast
@@ -511,6 +514,7 @@ export class WebSocketGWStack extends Stack {
     // grant permission to updateNotification and websocketBroadcast lambda to send message to SQS
     loggerQueue.grantSendMessages(updateNotification);
     loggerQueue.grantSendMessages(websocketBroadcast);
+    loggerQueue.grantSendMessages(sendInitialData);
 
     // creating log group for access logs
     const logGroup = new aws_logs.LogGroup(this, "WSGatewayAccessLogs", {

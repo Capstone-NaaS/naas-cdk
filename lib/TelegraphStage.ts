@@ -8,7 +8,7 @@ import { HttpGWStack } from "./stacks/HttpGWStack";
 import { SesStack } from "./stacks/SesStack";
 
 // Define the stage
-export class NaasStage extends Stage {
+export class TelegraphStage extends Stage {
   constructor(scope: Construct, id: string, props?: StageProps) {
     super(scope, id, props);
 
