@@ -5,6 +5,7 @@ import {
   aws_lambda,
   aws_lambda_event_sources,
   Duration,
+  aws_logs,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
@@ -47,6 +48,7 @@ export class DynamoLoggingStack extends Stack {
             commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(10),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -79,6 +81,7 @@ export class DynamoLoggingStack extends Stack {
           SLACK_NOTIFICATION: sendSlack.functionName,
         },
         timeout: Duration.seconds(20),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.dynamoLogger = dynamoLogger;

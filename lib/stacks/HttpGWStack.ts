@@ -47,6 +47,7 @@ export class HttpGWStack extends Stack {
         environment: {
           DLQ_URL: commonStack.dlq.queueUrl,
         },
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     commonStack.dlq.grantConsumeMessages(getDLQ);
@@ -68,6 +69,7 @@ export class HttpGWStack extends Stack {
             commonStack.userPreferencesDdb.UserPreferencesDdb.tableName,
         },
         timeout: Duration.seconds(10),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -87,6 +89,7 @@ export class HttpGWStack extends Stack {
             commonStack.notificationLogsDB.NotificationLogTable.tableName,
         },
         timeout: Duration.seconds(10),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -103,6 +106,7 @@ export class HttpGWStack extends Stack {
         },
         timeout: Duration.seconds(29),
         memorySize: 256,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -137,6 +141,7 @@ export class HttpGWStack extends Stack {
         },
         timeout: Duration.seconds(29),
         memorySize: 256,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
