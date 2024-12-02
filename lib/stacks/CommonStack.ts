@@ -1,6 +1,7 @@
 import {
   aws_lambda,
   aws_lambda_nodejs,
+  aws_logs,
   aws_sqs,
   Duration,
   Stack,
@@ -108,6 +109,7 @@ export class CommonStack extends Stack {
           QUEUE_URL: loggerQueue.queueUrl,
         },
         timeout: Duration.seconds(10),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.processRequest = processRequest;

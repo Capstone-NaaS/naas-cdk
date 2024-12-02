@@ -7,6 +7,7 @@ import {
   aws_lambda_nodejs,
   aws_lambda,
   Duration,
+  aws_logs,
 } from "aws-cdk-lib";
 import { CommonStack } from "./CommonStack";
 import * as path from "path";
@@ -43,6 +44,7 @@ export class SesStack extends Stack {
             commonStack.userAttributesDB.UserAttributesTable.tableName,
         },
         timeout: Duration.seconds(10),
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.sendEmail = sendEmail;

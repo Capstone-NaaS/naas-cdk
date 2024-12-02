@@ -85,6 +85,7 @@ export class WebSocketGWStack extends Stack {
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -119,6 +120,7 @@ export class WebSocketGWStack extends Stack {
             resources: ["*"],
           }),
         ],
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.websocketBroadcast = websocketBroadcast;
@@ -143,6 +145,7 @@ export class WebSocketGWStack extends Stack {
         },
         timeout: Duration.seconds(100),
         memorySize: 256,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -167,6 +170,7 @@ export class WebSocketGWStack extends Stack {
         timeout: Duration.seconds(100),
         memorySize: 256,
         functionName: commonStack.SAVE_NOTIFICATION_FN,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.saveActiveNotification = saveActiveNotification;
@@ -200,6 +204,7 @@ export class WebSocketGWStack extends Stack {
             resources: ["*"],
           }),
         ],
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.updateNotification = updateNotification;
@@ -233,6 +238,7 @@ export class WebSocketGWStack extends Stack {
             resources: ["*"],
           }),
         ],
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
@@ -267,6 +273,7 @@ export class WebSocketGWStack extends Stack {
             resources: ["*"],
           }),
         ],
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
     this.sendInitialData = sendInitialData;
@@ -287,6 +294,7 @@ export class WebSocketGWStack extends Stack {
         },
         timeout: Duration.seconds(30),
         memorySize: 256,
+        logRetention: aws_logs.RetentionDays.ONE_MONTH,
       }
     );
 
