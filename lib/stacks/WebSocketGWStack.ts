@@ -1,5 +1,6 @@
 import { Construct } from "constructs";
 import {
+  aws_apigateway,
   aws_apigatewayv2,
   aws_iam,
   aws_lambda,
@@ -534,6 +535,11 @@ export class WebSocketGWStack extends Stack {
     // create a role for API Gateway
     const apiGatewayRole = new aws_iam.Role(this, "ApiGatewayLoggingRole", {
       assumedBy: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
+      managedPolicies: [
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+        ),
+      ],
     });
 
     // Grant API Gateway permissions to write to Cloudwatch logs
@@ -566,6 +572,10 @@ export class WebSocketGWStack extends Stack {
           responseLength: "$context.responseLength",
         }),
       },
+    });
+
+    new aws_apigateway.CfnAccount(this, "EnableCloudWatchLogs", {
+      cloudWatchRoleArn: apiGatewayRole.roleArn,
     });
 
     // add deployment dependencies
