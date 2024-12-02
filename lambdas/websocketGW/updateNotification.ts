@@ -167,9 +167,9 @@ export const handler: Handler = async (event) => {
     let logStatus;
 
     if (status === "read") {
-      logStatus = "Notification read.";
+      logStatus = "In-app notification read.";
     } else if (status === "delete") {
-      logStatus = "Notification deleted.";
+      logStatus = "In-app notification deleted.";
     }
 
     const log: InAppLog = {

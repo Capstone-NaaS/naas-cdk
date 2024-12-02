@@ -120,7 +120,7 @@ export const handler: Handler = async (event) => {
         await docClient.send(updateCommand);
 
         const sentLog: InAppLog = {
-          status: "Notification sent.",
+          status: "In-app notification sent.",
           notification_id: item.notification_id,
           user_id,
           channel: "in_app",
