@@ -102,7 +102,7 @@ export const handler: Handler = async (event: EventType) => {
 
       // add log for notification being sent
       const sentLog: InAppLog = {
-        status: "Notification sent.",
+        status: "In-app notification sent.",
         notification_id: notification.notification_id,
         user_id,
         channel: "in_app",
@@ -134,7 +134,7 @@ export const handler: Handler = async (event: EventType) => {
       };
     } else {
       const queuedLog: InAppLog = {
-        status: "Notification queued for sending.",
+        status: "In-app notification queued for sending.",
         notification_id: notification.notification_id,
         user_id,
         channel: "in_app",
