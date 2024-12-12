@@ -1,6 +1,8 @@
-# CDK for the notification as a service
+# Telegraph CDK
 
-This CDK project will automatically deploy AWS resources to the cloud.
+This CDK will automatically deploy Telegraph's AWS resources to the cloud.
+
+The CDK is designed to be run by [Telegraph CLI](https://github.com/telegraph-notify/telegraph-cli). It may run on its own if the proper configuration steps are taken. Please see the CLI page for more detail.
 
 ## Requirements
 
@@ -14,11 +16,11 @@ This CDK project will automatically deploy AWS resources to the cloud.
 
 ## Commands
 
-| Command                                              | Description                                                 |
-| ---------------------------------------------------- | ----------------------------------------------------------- |
-| `cdk synth`                                          | Convert the CDK code to CloudFormation template.            |
-| `cdk deploy "dev-{name}/*" --require-approval never` | Deploy all defined resources in the **dev-{name}** stage.   |
-| `cdk destroy "dev-{name}/*"`                         | Destroy all deployed resources in the **dev-{name}** stage. |
+| Command                                        | Description                                           |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| `cdk synth`                                    | Convert the CDK code to CloudFormation template.      |
+| `cdk deploy "prod/*" --require-approval never` | Deploy all defined resources in the **prod** stage.   |
+| `cdk destroy "prod/*"`                         | Destroy all deployed resources in the **prod** stage. |
 
 ## Constructs
 
@@ -35,30 +37,39 @@ This CDK project will automatically deploy AWS resources to the cloud.
 | Stack           | Description                                           |
 | --------------- | ----------------------------------------------------- |
 | `CommonStack`   | Stack created at the beginning for shared resources.  |
-| `WebSocketGW`   | WebSocket API Gateway for communicating with clients. |
-| `HttpGW`        | HTTP API Gateway for accepting REST endpoints.        |
 | `DynamoLogging` | Adding notification logs to DynamoDB table.           |
+| `HttpGW`        | HTTP API Gateway for accepting REST endpoints.        |
 | `SesStack`      | Uses SES to send email notifications                  |
+| `WebSocketGW`   | WebSocket API Gateway for communicating with clients. |
 
 ## Resources
 
-| Resource    | Name                      | Description                                                       |
-| ----------- | ------------------------- | ----------------------------------------------------------------- |
-| API Gateway | `ApiGwSocket`             | WebSocket API gateway.                                            |
-| API Gateway | `HttpApi`                 | HTTP API gateway.                                                 |
-| DynamoDB    | `ActiveNotificationTable` | Stores active notifications.                                      |
-| DynamoDB    | `ConnectionIdTable`       | Stores current WS connection information.                         |
-| DynamoDB    | `NotificationLogDb`       | Stores logs of notifications.                                     |
-| DynamoDB    | `UserAttributesDb`        | Stores user attributes.                                           |
-| DynamoDB    | `UserPreferencesDdb`      | Stores user preferences.                                          |
-| Lambda      | `dynamoLogger`            | Logs notification to DynamoDB table.                              |
-| Lambda      | `saveActionNotification`  | Adds a notification to the DynamoDB of active notifications.      |
-| Lambda      | `sendInitialData`         | Sends stored data to the client on initial log in.                |
-| Lambda      | `updateNotification`      | Updates the status of an active notification.                     |
-| Lambda      | `updatePreference`        | Updates the notification preferences of a user.                   |
-| Lambda      | `userFunctions`           | Route handler for the `/user` route in the HTTP API Gateway.      |
-| Lambda      | `websocketAuthorizer`     | Lambda authorizer for the `$connect` route in the WS API Gateway. |
-| Lambda      | `websocketBroadcast`      | Lambda to handle websocket `broadcast` route.                     |
-| Lambda      | `websocketConnect`        | Lambda to handle websocket `$connect` route.                      |
-| Lambda      | `websocketDisconnect`     | Lambda to handle websocket `$disconnect` route.                   |
-| Lambda      | `sendEmail`               | Lambda to trigger SES                                             |
+| Resource    | Name                      | Description                                                              |
+| ----------- | ------------------------- | ------------------------------------------------------------------------ |
+| API Gateway | `ApiGwSocket`             | WebSocket API gateway.                                                   |
+| API Gateway | `HttpApi`                 | HTTP API gateway.                                                        |
+| DynamoDB    | `ActiveNotificationTable` | Stores active notifications.                                             |
+| DynamoDB    | `ConnectionIdTable`       | Stores current WS connection information.                                |
+| DynamoDB    | `NotificationLogDb`       | Stores logs of notifications.                                            |
+| DynamoDB    | `UserAttributesDb`        | Stores user attributes.                                                  |
+| DynamoDB    | `UserPreferencesDdb`      | Stores user preferences.                                                 |
+| Lambda      | `dashboardAuthorizer`     | Authorizes API calls sent by the dashboard.                              |
+| Lambda      | `httpAuthorizer`          | Authorizes API calls sent by the backend SDK.                            |
+| Lambda      | `getDLQ`                  | Retrieves all messages in the DLQ.                                       |
+| Lambda      | `fetchNotifLogsFunctions` | Retrieves all notification logs.                                         |
+| Lambda      | `processRequest`          | Lambda that processes all requests to send a notification out to a user. |
+| Lambda      | `dynamoLogger`            | Logs notification to DynamoDB table.                                     |
+| Lambda      | `saveActionNotification`  | Adds a notification to the DynamoDB of active notifications.             |
+| Lambda      | `sendInitialData`         | Sends stored data to the client on initial log in.                       |
+| Lambda      | `updateNotification`      | Updates the status of an active notification.                            |
+| Lambda      | `updatePreference`        | Updates the notification preferences of a user.                          |
+| Lambda      | `userFunctions`           | Route handler for the `/user` route in the HTTP API Gateway.             |
+| Lambda      | `websocketAuthorizer`     | Lambda authorizer for the `$connect` route in the WS API Gateway.        |
+| Lambda      | `websocketBroadcast`      | Lambda to handle websocket `broadcast` route.                            |
+| Lambda      | `websocketConnect`        | Lambda to handle websocket `$connect` route.                             |
+| Lambda      | `websocketDisconnect`     | Lambda to handle websocket `$disconnect` route.                          |
+| Lambda      | `sendEmail`               | Lambda to trigger SES.                                                   |
+| Lambda      | `sendSlack`               | Lambda to send Slack webhook.                                            |
+| SES         | --                        | SES identity to use as sender when sending email notifications.          |
+| SQS         | `notificationQueue`       | Queue to handle sending notifications to users.                          |
+| SQS         | `DeadLetterQueue`         | DLQ for notifications that fail to send.                                 |
